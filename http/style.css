@@ -1,0 +1,97 @@
+body {
+	background: #333;
+	color: #fff;
+	font-family: monospace;
+	font-size: 13px;
+}
+
+h1 {
+	margin: .3em 0;
+}
+
+div#chat {
+	background: #000;
+	border: solid 1px #ccc;
+	top: 3em;
+	bottom: .5em;
+	position: absolute;
+	left: .5em;
+	right: .5em;
+	overflow: auto;
+}
+
+div#chat table {
+}
+
+.nick {
+	text-align: right;
+	padding-left: 1.5em;
+	padding-right: .7em;
+	border-right: solid 2px green;
+	color: #fff;
+}
+
+.timestamp {
+	color: #bbb;
+}
+
+div#chat table tr {
+
+}
+
+.content {
+	color: #ddd;
+	padding-left: .7em;
+	white-space: pre-wrap;
+}
+
+.content a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.content a:hover {
+	text-decoration: underline;
+}
+
+td {
+	padding-right: 1em;
+	color: #bbb;
+	vertical-align: top;
+}
+
+.rowid {
+	color: #bbb;
+}
+
+.timestamp span {
+	padding: 0;
+	margin: 0;
+	color: orange;
+}
+
+.color-1 { color: cyan; }
+.color-2 { color: #0f0; }
+.color-3 { color: #f73; }
+.color-4 { color: #66f; }
+.color-5 { color: #a020f0 }
+.color-6 { color: red; }
+.color-7 { color: orange; }
+.color-8 { color: magenta; }
+.color-9 { color: yellow; }
+.color-10 { color: pink; }
+.color-joined { color: #5f5; }
+.color-left { color: #f55; }
+
+tr.PART span.has, tr.QUIT span.has {
+	color: #b00;
+}
+
+tr.JOIN span.has, span.qb{
+	color: #0b0;
+}
+
+td.content b {
+	font-weight: normal;
+	color: #fff;
+}

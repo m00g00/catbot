@@ -1,0 +1,9 @@
+*.db
+*.bak
+*.sql
+*.swo
+*.swp
+*.swn
+dbout
+junk
+config
