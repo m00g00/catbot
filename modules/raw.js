@@ -69,11 +69,16 @@ var IRCMessage = {
 	},
 
 	respond: function(text) {
-		if (this.command != 'PRIVMSG' && this.command != 'NOTICE' && this.command != 'JOIN') throw "Message not respondable";
+		if (this.command != 'PRIVMSG' && this.command != 'NOTICE' && this.command != 'JOIN' && this.command != 'CTCP') throw "Message not respondable";
 
 		var response = this.reverse();
 
 		if (response.command == 'JOIN') response.command = 'PRIVMSG';
+
+		if (this.command == 'CTCP') { 
+			response.command = 'NOTICE';
+			text = '\x01' + this.args[0] + ' ' + text + '\x01';
+		}
 
 		txtSplit(text).forEach(function(l) {
 			var clone = response.clone();
@@ -434,8 +439,12 @@ transmorgrify({
 
 //Transform exported functions to irc common
 com.meld(exports);
-	
+
 var privmsg = exports.privmsg;
+
+exports.ctcp = com.ctcp = function(to, msg) {
+	privmsg(to, '\x01' + msg);
+}
 		
 /*function privmsg(to, text) {
 	echo('PRIVMSG '+to+' :'+text);
@@ -555,6 +564,10 @@ function emitLine(line) {
 
 	var message = typeof line == 'string' ? parse(line) : line;
 
+	if (message.command == 'PRIVMSG' && message.toMe() && message.text[0] == '\x01' && message.text[message.text.length-1] == '\x01') {
+		message.command = 'CTCP'; message.text = message.text.slice(1, message.text.length - 1);
+	}
+
 	log(
 		(message.direction == 'outgoing' ? 
 			color.red + '< ' : color.yellow + '> ') + 
@@ -564,7 +577,9 @@ function emitLine(line) {
 
 	mod.emitAll('RAW', message);
 
+
 	var caseCmd = message.command.toUpperCase();
+
 
 	mod.emitAll(caseCmd, message);
 
@@ -600,8 +615,6 @@ mod.on(433, function() {
 
 	if (!newnick) newnick = irc.state.nick + (~~(Math.random() * 100)).toString();
 
-	//irc.state.nick = newnick;
-
 	com.nick(newnick);
 });
 
@@ -636,6 +649,29 @@ function startup() {
 		com.join(channel);
 	});
 };
+
+/*mod.on('PRIVMSG \x01', function(message) {
+	console.log("CTCPSOMETHING");
+	var clone = message.clone();
+	clone.text = clone.text.substr(1);
+	mod.emitAll('CTCP', clone);
+});*/
+
+mod.on('CTCP version', function(message) {
+	message.respond(mod.irc.conf.version);
+});
+
+mod.on('CTCP time', function(message) {
+	message.respond(new Date);
+});
+
+mod.on('CTCP ping', function(message) {
+	message.respond(message.args[1]);
+});
+
+
+
+
 
 /*mod.on('!stfu', function(message) {
 	queue.splice(0);

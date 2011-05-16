@@ -317,6 +317,8 @@ IRC.defaultConf = {
 	format_messages_incoming: true,
 	format_messages_outgoing: true,
 
+	version: 'catbot .000372712 / nodejs bot coded by MooGoo',
+
 	quit_msg: 'BAI',
 
 	flood_throttle: true,
