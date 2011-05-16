@@ -443,7 +443,7 @@ com.meld(exports);
 var privmsg = exports.privmsg;
 
 exports.ctcp = com.ctcp = function(to, msg) {
-	privmsg(to, '\x01' + msg);
+	com.notice(to, '\x01' + msg + '\x01');
 }
 		
 /*function privmsg(to, text) {
