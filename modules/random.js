@@ -98,7 +98,7 @@ function spawncontext(message) {
 
 		child.on('error', function(e) {
 			message.respond(
-				(e.message || e).replace(/\n/g, '')
+				e.replace(/\n/g, '')
 			);
 		});
 
