@@ -86,7 +86,9 @@ IRC.addPrototype({
 		});
 
 		this.on('module_loaded', function(name, file, module) {
-			this.modules[file] = module;
+			var key = typeof this.modules[name] == 'undefined' ? 
+				name : file;
+			this.modules[key] = module;
 
 			logf('Registered % event handlers', module.getNumListeners());
 			logs('I HAS "%s"!\n', name);
@@ -274,11 +276,22 @@ IRC.addPrototype({
 		}
 
 	},*/
-
+	inline_count: 0,
 	loadModule: function(name) {
-		var file = (name[0] == '.' || name[0] == '/' ? 
-				name : path.join(this.conf.path_modules, name)) + '.js';
+		
+		var file;
+		if (typeof name == 'function') {
+			file = name;
+			name = file.toString().match(/^\s*function\s+([\w\d$_]+)/)[1] || 'inline' + ++this.inline_count;
+		} else if (typeof name == 'string' && (name[0] == '.' || name[0] == '/')) {
+			file = name + '.js';
+		} else {
+			file = path.join(this.conf.path_modules, name) + '.js';
+		}
 
+	    /*		file = (typeof name == 'function' || typeof name =='string' && (name[0] == '.' || name[0] == '/') ? 
+						name : path.join(this.conf.path_modules, name)) + '.js';
+        */
 		this.emit('module_before_load', name, file);
 
 		new Module(name, file, this);
@@ -317,7 +330,7 @@ IRC.defaultConf = {
 	format_messages_incoming: true,
 	format_messages_outgoing: true,
 
-	version: 'catbot .000372712 / nodejs bot coded by MooGoo',
+	version: 'catbot 1.337 / Node.js irc bot / https://github.com/m00g00/catbot',
 
 	quit_msg: 'BAI',
 
@@ -351,14 +364,17 @@ function Module(name, file, irc) {
 	}
 
 	var module = this;
+
+	if (typeof file == 'function') callback(null, file.apply(this, params.values()));
+	else Script.runFileAsFunction(file, params, this, callback);
 	
-	Script.runFileAsFunction(file, params, this, function(err, result) {
+	function callback(err, result) {
 		if (err) {
 			irc.emit('module_load_error', name, file, err);
 		} else {
 			irc.emit('module_loaded', name, file, module);
 		}
-	});
+	}
 };
 
 Module.inherits(EventEmitter);
@@ -391,6 +407,8 @@ Module.addPrototype({
 			}
 
 			this.super_.on.call(this, event, listener);
+
+			this.emitAll('EVENT_REGISTERED', event, listener, this);
 		}, this);
 	},
 

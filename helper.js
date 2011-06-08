@@ -28,6 +28,10 @@ var func = {
 		return func;
 	},
 
+	values: function() {
+		return Object.values(this);
+	},
+
 	bind: function(func, obj) {
 		return function() {
 			func.apply(obj, arguments);
@@ -49,7 +53,17 @@ Object.newChild = function() {
 	return fchild;
 };
 
+
+
+
 var object = {
+
+	values: function(obj) {
+		var arr = [];
+		for (var i in obj) if (obj.hasOwnProperty(i)) arr.push(obj[i]);
+		return arr;
+	},
+
 	inherits: function(obj, superObj) {
 			obj.__proto__ = superObj;
 			Object.defineProperty(obj, 'super_', {

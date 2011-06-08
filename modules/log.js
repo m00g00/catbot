@@ -1,6 +1,6 @@
 var log = require('./helper').log;
 
-mod.on('!quote', quote);
+mod.on(['!quote', '.quote'], quote);
 mod.on('!quoteall', quoteall);
 mod.on('!qa', quoteall);
 mod.on('!qsn', qsn);
@@ -466,6 +466,8 @@ function echoLines(lines, message) {
 
 		msg.push(lmsg);
 	});
+
+	if (lines.length == 1) msg[0] += ' ' + msg.pop();
 
 	msg.forEach(function(m) {
 		message.respond(m);

@@ -63,7 +63,6 @@ function google(message) {
 	console.log('http://www.google.com/search?q=' + escape(message.query.text.replace(/\s/g, '+')))
 
 	scrape('http://www.google.com/search?q=' + escape(message.query.text), function(doc, body, response) {
-		console.log(body);
 		var ls = doc.find('//li[not(@id)]//h3/a');
 
 		var msg = ''

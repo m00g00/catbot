@@ -8,6 +8,21 @@ mod.on([',jsreset', ',jsr'], force_resetcontext);
 ['!rock', '!paper', '!scissors'].forEach(function(e) {
 	mod.on(e, rps);
 });
+mod.on('.peen', function(msg){
+	var r=function(c,m){return Array(~~(Math.random()*m)).join(c)}; 
+	msg.respond(r('#',4)+'8'+r('=',30)+'D'+r('~',10)); 
+});
+mod.on('.kafc', function(msg) {
+	msg.respond(kaffine_compile(msg.query.text).trim());
+});
+mod.on('.kafr', function(msg) {
+	var code = kaffine_compile(msg.query.text).trim();
+	var clone = msg.clone();
+	clone.query.text = code;
+	js(clone);
+});
+
+
 
 function spell(message) {
 	var spawn = require('child_process').spawn,
@@ -50,6 +65,12 @@ function pi(message) {
 	message.respond(Math.PI);
 }
 
+var kaffine = require('kaffeine');
+
+function kaffine_compile(code) {
+	return kaffine.fn.compile(code);
+}
+
 var jsctx = {};
 function spawncontext(message) {
 		var child = require('./lib/fork').fork(function() {
@@ -67,6 +88,7 @@ function spawncontext(message) {
 					stream: null,
 					maxLength: 200
 				}),
+				//bf = require('node-brainfuck'),
 				context = {
 					console: {
 						log: function(obj) {
@@ -74,8 +96,11 @@ function spawncontext(message) {
 						}
 					},
 
+					//bf: bf,
+
 					setTimeout: global.setTimeout,
-					setInterval: global.setInterval
+					setInterval: global.setInterval,
+					clearInterval: global.clearInterval
 				};
 			process.on('message', function(msg) {
 				process.postMessage(
