@@ -1,6 +1,6 @@
 var log = require('./helper').log;
 
-mod.on(['!quote', '.quote'], quote);
+mod.on('!quote', quote);
 mod.on('!quoteall', quoteall);
 mod.on('!qa', quoteall);
 mod.on('!qsn', qsn);
@@ -70,7 +70,7 @@ function createChanTable(channel, server) {
   			  "INSERT INTO {mem}.{chan} (docid, nick, content) " +
   			  "SELECT loginfo.rowid, nick, content FROM loginfo, logtext " +
   			  "WHERE channel = '{channel}' AND server = '{server}' AND type = 'PRIVMSG' " +
-  			  "AND self = 0 AND SUBSTR(content, 1, 1) != '!' AND loginfo.rowid = logtext.docid; COMMIT").fo({mem: nmem, chan: chan, channel: channel, server: server});
+  			  "AND self = 0 AND SUBSTR(content, 1, 1) != '!' AND SUBSTR(content, 1, 1) != '.' AND loginfo.rowid = logtext.docid; COMMIT").fo({mem: nmem, chan: chan, channel: channel, server: server});
 
 
 		log.question('Creating temp table for ' + chan);
