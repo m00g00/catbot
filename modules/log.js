@@ -31,6 +31,7 @@ var temptables = {};
 var nmem = mod.irc.getId();
 
 db.query("PRAGMA database_list", function(result) {
+	//console.log(typeof result);
 
 if (!result.some(function(d) { return d.name == nmem }))
 	db.query("ATTACH DATABASE ':memory:' AS " + nmem);
@@ -57,7 +58,7 @@ mod.on('JOIN', function(message) {
 });
 
 function normalizeChan(chan) {
-	return typeof chan == 'string' ? chan.replace(/[^A-Za-z0-9_]/g, '') : false;
+	return typeof chan == 'string' ? chan.replace(/[^A-Za-z0-9_]/g, '').toLowerCase() : false;
 }
 
 
@@ -74,7 +75,7 @@ function createChanTable(channel, server) {
 
 
 		log.question('Creating temp table for ' + chan);
-		db.query(cq, function(res) {
+		db.exec(cq, function(res) {
 			temptables[chan] = true;
 			log.success('Temp table % created'.f(chan));
 		});
@@ -89,7 +90,7 @@ function irclog(message) {
 		message.to == 'NickServ' ||
 		message.user == 'services' || 
 		(message.direction == 'outgoing' && message.command != 'PRIVMSG') ||
-		!/PRIVMSG|JOIN|PART|QUIT|KICK|TOPIC|NICK/.test(message.command)) 
+		!/PRIVMSG|JOIN|PART|QUIT|KICK|TOPIC|NICK|MODE/.test(message.command)) 
 			return;
 
 	var params = [
@@ -142,6 +143,7 @@ var queryCache = {
 			var key = p.server + ':' + p.channel + ':' + (p.nick || '') + ':';
 
 			if (p.text) {
+				print_r(p.text)
 				key += p.text.replace(/\|/g, '')
 							 .split(/\s+/)
 							 .filter(function(w){ return !/^[A-Z]$/.test(w); })
@@ -211,6 +213,7 @@ function expireCache(message) {
 
 
 function makeQuery(p) {
+	print_r(p)
 
 	var execute, result, ret = { all: false };
 	var fields = p.fields || 'docid rowid, nick, content text';
@@ -298,7 +301,7 @@ function makeQuery(p) {
 
 						//var line = thiz.all ? result : result.length > 1 ? result.getRandom() : result.length ? result[0] : null;
 
-						callback.call(null, thiz.all? line : this.length > 1 ? line.next() : this.length ? line[0] : null);
+						callback.call(null, thiz.all? line : line.length > 1 ? line.next() : line.length ? line[0] : null);
 					});
 			};
 	}
@@ -328,11 +331,11 @@ function qsn(message) {
 }
 
 function qs(message) {
-	var text = message.query.text;
+	var text = message.toMe() ? message.query.args.slice(1).join(' ') : message.query.text;
 
 	var q = makeQuery({
 		fields: 'count(*) count',
-		channel: message.channel,
+		channel: message.toMe() ? message.query.args[0] : message.channel,
 		server: mod.irc.state.server,
 		text: text
 	});
@@ -354,21 +357,34 @@ var quotefail = 'I cants find :(';
 
 function quote(message) {
 	
-	var querytxt = message.query.text.trim();
+	var querytxt = message.query.text.trim(),
+		chan, qp = querytxt.split(' ');
 
 	if (querytxt[0] == '"' || querytxt[0] == "'") {
 		quoteall(message);
 		return;
+	} else if (querytxt[0] == '#') {
+		chan = qp.shift();	
+	} else if (message.channel) {
+		chan = message.channel
+	} else {
+		message.respond("No channel specefied");
+		return;
 	}
 
-	var qp = message.query.text.splitFirstWord();
+	if (temptables[normalizeChan(chan)] != true) {
+		message.respond("Channel not found");
+		return;
+	}
 
-	var nick = qp[0];
-	var text = qp[1];
+	//var qp = message.query.text.splitFirstWord();
+
+	var nick = qp.shift();
+	var text = qp.join(' ');
 
 	var q = makeQuery({
 		nick: nick,
-		channel: message.channel,
+		channel: chan,
 		server: mod.irc.state.server,
 		text: text
 	});
@@ -400,7 +416,13 @@ function loginfo(message) {
 	var qparts = /^(\d*~)?(\d+)([+-]\d+)?$/.exec(query.text.trim());
 	print_r(qparts);
 
-	if (!qparts || (qparts[1] && qparts[3]) || (qparts[1] && +qparts[1].match(/^\d*/)[0] > 10)) { message.respond("Usage: !log logid | [[n]~]logid | logid[(+|-)n]"); return }
+	if (!qparts || 
+		(qparts[1] && qparts[3]) || 
+		(qparts[1] && +qparts[1].match(/^\d*/)[0] > 10) || 
+		(qparts[3] && Math.abs(+qparts[3]) > 10)) { 
+			message.respond("Usage: !log logid | [[n]~]logid | logid[(+|-)n(<=10)]"); 
+			return; 
+	}
 
 	var find_rowid = "(SELECT min(rowid) FROM (SELECT rowid FROM loginfo WHERE rowid < % ORDER BY rowid DESC LIMIT %))"
 
@@ -533,7 +555,7 @@ function stats(message) {
 }
 
 function talkaboutme(message) {
-	if (message.direction == 'incoming' && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message);
+	if (message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message);
 }
 
 function talk(message) {
@@ -552,7 +574,7 @@ function talk(message) {
 
 		sentance.push(set);
 
-		if (sentance.length >= max || !sentance.last || set.split(' ').length < order) {
+		if (/*sentance.length >= max || */!sentance.last || set.split(' ').length < order) {
 			message.respond(sentance.join(' '));
 		} else {
 			getNext(set, order, arguments.callee);

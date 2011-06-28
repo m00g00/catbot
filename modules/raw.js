@@ -294,14 +294,18 @@ queue.add = function(message) {
 	queue.run();
 }
 
-queue.run = function() {
+queue.run = function(slow) {
 	if (queue.wait) return;
 
-	var now = +new Date, max = irc.conf.flood_max_lines, interval = irc.conf.flood_interval;
+	var now = +new Date, 
+		max = slow ? 1 : irc.conf.flood_max_lines, 
+		interval = irc.conf.flood_interval;
 	if (!queue.start || now - queue.start > interval) {
 		queue.start = now;
 		queue.count = 0;
 	}
+
+	//[queue, now, max, interval, queue.start, queue.count].forEach(function(e){ print_r(e) });
 
 	var line;
 	while (now - queue.start < interval && ++queue.count <= max && (line = queue.shift())) {
@@ -309,11 +313,12 @@ queue.run = function() {
 	}
 
 	if (queue.length) {
+		console.log("THROTTLE");
 		queue.wait = true;
 		setTimeout(function() {
 			queue.wait = false;
 			queue.start = null;
-			queue.run();
+			queue.run(true);
 		}, 500);
 	}
 

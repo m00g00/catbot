@@ -95,29 +95,47 @@ function spawncontext(message) {
 							process.postMessage(inspect(obj));
 						}
 					},
+					print: function(obj) {
+						process.postMessage(inspect(obj));
+					},
 
 					//bf: bf,
 
-					setTimeout: global.setTimeout,
-					setInterval: global.setInterval,
-					clearInterval: global.clearInterval
+					//setTimeout: global.setTimeout,
+					//setInterval: global.setInterval,
+					//clearInterval: global.clearInterval
 				};
 			process.on('message', function(msg) {
-				process.postMessage(
+				if (msg == '#PING') process.postMessage('#PONG');
+				else {
+					process.postMessage(
+						inspect(vm.runInNewContext(msg, context))
+					);
+					process.postMessage('#DONE');
+				}
+
+				/*process.postMessage(
 					msg == '#PING' ? '#PONG' :
 					inspect(vm.runInNewContext(msg, context))
-				);
+				);*/
 			});
 		});
 
-		var ping = false;
+		var ping = false, buffer = [];
 		child.on('message', function(m) {
 			if (ping && m == "#PONG") {
 				ping = false;
+			} else if (m == '#DONE') {
+				console.log(buffer);
+				message.respond(buffer.map(function(b) {
+					return (b.length > 200 ? b.substr(0, 200) + '\x0f ...' : b).replace(/\n/g, '\\n');
+				}).join('; '));
+				buffer.length = 0;
 			} else {
-				m = m.replace(/\n/g, '');
+				buffer.push(m);
+				/*m = m.replace(/\n/g, '');
 				if (m.length > 200) m = m.substr(0, 200) + '\x0f ...';
-				message.respond(m);
+				message.respond(m);*/
 			}
 		});
 
@@ -164,6 +182,7 @@ function resetcontext(message) {
 exports.ctx = jsctx;
 
 function js(message) {
+	if (!message.query.text.trim()) return;
 	var ctxname = message.channel ? message.channel : message.from;
 
 	var ctx = jsctx[ctxname] || (jsctx[ctxname] = spawncontext(message));

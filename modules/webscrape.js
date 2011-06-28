@@ -68,7 +68,7 @@ function google(message) {
 		var msg = ''
 		for (var i=0; i < ls.length && i < ln; i++) {
 			var l = ls[i];
-			msg += unescape(l.text()) + ' (' + l.attr('href').value() + ')' + (i < ln-1 ? ', ' : '')
+			msg += unescape(l.text()) + ' @ ' + l.attr('href').value() + (i < ln-1 ? ' | ' : '')
 		}
 
 		message.respond(msg);

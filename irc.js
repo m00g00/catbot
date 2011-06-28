@@ -25,6 +25,8 @@ function IRC(conf) {
 
 	this.conf = Object.prototype.inherits.call(conf, IRC.defaultConf);
 
+	this.setNoDelay(false);
+
 	if (!(this.conf.modules instanceof Array)) throw "Config: Property 'modules' must be array";
 
 	this.state = {
@@ -142,7 +144,13 @@ IRC.addPrototype({
 		var keys = Object.keys(this.modules);
 		for (var i=0, l=keys.length; i<l; ++i) {
 			var module = this.modules[keys[i]];
-			module.emit.apply(module, arguments);
+			try {
+				module.emit.apply(module, arguments);
+			} catch (e) {
+				loge('Module Event Exception');
+				print_r(e);
+			}
+
 		}
 	},
 
@@ -216,7 +224,7 @@ IRC.addPrototype({
 
 		if (mi >= this.conf.modules.length) throw "Invalid starting index";
 
-		events = ['module_loaded', 'module_load_error'];
+		var events = ['module_loaded', 'module_load_error'];
 
 		this.on(events, function(module) {
 			if (++mi < this.conf.modules.length) this.loadModule(this.conf.modules[mi]);

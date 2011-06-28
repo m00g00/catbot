@@ -3,7 +3,7 @@ var log = require('./helper').log;
 mod.on('!insult', insult);
 mod.on('!insultadd', insultadd);
 mod.on('!stardate', insult);
-mod.on('JOIN', insultjoin);
+if (!mod.irc.conf.insult_no_join) mod.on('JOIN', insultjoin);
 
 var db = com.db;
 

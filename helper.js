@@ -109,7 +109,7 @@ var object = {
 	iterate: function (obj, func, self) {
 		var keys = Object.keys(obj);
 		for (var i=0, l=keys.length; i<l; ++i) {
-			if (func.call(self, obj[keys[i]], keys[i]) === false) break;
+			if (func.call(self, obj[keys[i]], keys[i], obj) === false) break;
 		}
 	},
 
