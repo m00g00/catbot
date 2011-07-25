@@ -22,6 +22,78 @@ mod.on('.kafr', function(msg) {
 	js(clone);
 });
 
+mod.on('.perf', function(msg) {
+	var nmsg = msg.clone();
+
+	nmsg.text = '.pref var i = 999999; console.time(); while (--i) { ' + msg.query.text + '}; console.timeEnd()';
+
+	js(nmsg);
+});
+
+mod.on('!uptime', function(message) {
+	var now = new Date,
+		connect_time = now - mod.irc.state.connect_time,
+		process_time = now - global.share.process_start_time;
+		
+
+	var calcdiff = function(diff) {
+		var second = 1000,
+			minute = second * 60,
+			hour   = minute * 60,
+			day	   = hour * 24;
+
+		var days    = ~~(diff / day),
+			hours   = ~~((diff -= days * day) / hour),
+			minutes = ~~((diff -= hours * hour) / minute),
+			seconds = ~~((diff -= minutes * minute) / second),
+			millise = (diff -= seconds * second)
+		
+		var o = [ { days: days }, { hours: hours }, { minutes: minutes }, { seconds: seconds }, { milliseconds: millise } ];
+
+		return o.filter(function(e) {
+			return e[Object.keys(e)[0]];
+		}).map(function(e, i, a) {
+			var k = Object.keys(e)[0];
+			if (!e[k]) return '';
+
+			return (i == a.length - 1 ? 'and ' : '') + e[k] + ' ' + (e[k] > 1 ? k : k.substr(0, k.length-1));
+		}).join(' ');
+	}
+
+	message.respond(
+		process_time == connect_time ?
+			"I haz not crashed, and has been connected to thiz server for " + calcdiff(process_time) :
+			"I haz not crashed for " + calcdiff(process_time) + " and has been connected to this server for " + calcdiff(connect_time)
+	);
+});
+
+
+
+/*mod.on('.php', function(
+
+var meta = require('./lib/meta');*/
+
+mod.on('!give', function(msg) {
+	var p = /^\s*([^\s]+)\s+(?:([\+-]?\d+)\s+)?(.*)\s*/(msg.query.text);
+
+	if (!p) { msg.respond("Give what to who now?"); return; }
+
+	var nick = p[1], num = !isNaN(p[2]) ? +p[2] : 1, item = p[3];
+
+	var ident = { type: 'items', name: nick, server: mod.irc.getServerName(), channel: msg.channel, key: item };
+	meta.get(ident, function(obj) {
+		if (!(item in obj)) obj[item] = 0;
+
+		obj[item] += num;
+		meta.update(obj);
+
+		msg.respond(msg.nick + " gave " + num + " " + item + " to " + nick + ", " + nick + " now has " + obj[item] + " " + item);
+	});
+});
+
+
+
+
 
 
 function spell(message) {
@@ -88,12 +160,31 @@ function spawncontext(message) {
 					stream: null,
 					maxLength: 200
 				}),
+
+				times = [];
 				//bf = require('node-brainfuck'),
 				context = {
 					console: {
 						log: function(obj) {
 							process.postMessage(inspect(obj));
+						},
+
+						time: function(label) { times[label] = Date.now() },
+						timeEnd: function(label) { return (typeof label != 'undefined' ? label + ': ' : '') + (Date.now() - times[label]) + 'ms' },
+
+						perf: function(code) { 
+							var body;
+							if (typeof code == 'function') {
+								body = code.toString().match(/^function.*?\{(.*)\}$/)[1];
+							} else if (typeof code == 'string') {
+								body = code;
+							} else {
+								throw Error("Invalid code provided for testing");
+							}
+
+							return eval('this.time(); var i=999999; while(--i) {' + body + '}; this.timeEnd()');
 						}
+
 					},
 					print: function(obj) {
 						process.postMessage(inspect(obj));

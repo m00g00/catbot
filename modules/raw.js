@@ -1,8 +1,7 @@
-with (require('./helper').log) {
-		var log = putIRC;
-		var getcolor = parseColor;
-		var color = colors;
-}
+var hlog = require('./helper').log,
+	log = hlog.putIRC;
+	getcolor = hlog.parseColor;
+	color = hlog.colors;
 
 /*irc.registerStreamEvents(mod);
 mod.on('stream::data', onData);
@@ -116,7 +115,7 @@ var IRCMessage = {
 
 	toString: function(colored) {
 		
-		var c;
+		var c, i;
 		if (colored) {
 			c = this.colors;
 		} else {
@@ -140,11 +139,12 @@ var IRCMessage = {
 
 			parts.push.apply(parts, this.params);
 
-			if (colored) 
-				with ({i: parts.length-this.params.length}) 
-					parts[i] = c.params + parts[i];
+			if (colored) {
+				i = parts.length - this.params.length;
+				parts[i] = c.params + parts[i];
+			}
 
-			if (this.trailing) parts.last = c.trailing + ':' + parts.last;
+			if (this.trailing) parts.last = c.trailing + ':' + parts.last.replace(/\u000e/g, '');
 
 		}
 
@@ -554,8 +554,7 @@ com.eventFilter = parseEvent;
 
 //Read raw stream buffer
 var buffer = '';
-
-irc.on('data', function(data) {
+function ondata(data) {
 	var lines = (buffer + data).split('\r\n');
 
 	for (var i=0,l=lines.length-1; i<l; i++) {
@@ -563,7 +562,9 @@ irc.on('data', function(data) {
 	}
 
 	buffer = lines[i];
-});
+};
+
+irc.on('data', ondata);
 
 function emitLine(line) {
 
@@ -573,12 +574,14 @@ function emitLine(line) {
 		message.command = 'CTCP'; message.text = message.text.slice(1, message.text.length - 1);
 	}
 
-	log(
-		(message.direction == 'outgoing' ? 
-			color.red + '< ' : color.yellow + '> ') + 
-		color.reset + 
-		message.toString(true)
-	);
+	if ((message.command != "PING" && message.command != "PONG") || global.share.log_pingpong == true) 
+		log(
+			(servers.numProperties() > 1 ? color.grey + mod.irc.getId()[0] + color.reset + '': '') +
+			(message.direction == 'outgoing' ? 
+				color.red + '< ' : color.yellow + '> ') + 
+			color.reset + 
+			message.toString(true)
+		);
 
 	mod.emitAll('RAW', message);
 
@@ -593,7 +596,7 @@ function emitLine(line) {
 
 };
 
-irc.on('connect', function() {
+function onconnect() {
 	irc.state.connect_time = new Date;
 
 	irc.state.nick = irc.conf.nick;
@@ -601,7 +604,9 @@ irc.on('connect', function() {
 	echo('NICK {nick}'.fo(mod.irc.conf));
 	echo('USER {user} {mode} * :{name}'.fo(mod.irc.conf));
 
-});	
+};	
+
+irc.on('connect', onconnect);
 
 mod.on('PING', function(message) {
 	echo('PONG :' + message.text);
@@ -672,6 +677,11 @@ mod.on('CTCP time', function(message) {
 
 mod.on('CTCP ping', function(message) {
 	message.respond(message.args[1]);
+});
+
+mod.on('UNLOAD', function() {
+	irc.removeListener('connect', onconnect);
+	irc.removeListener('data', ondata);
 });
 
 

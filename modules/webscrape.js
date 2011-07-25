@@ -13,6 +13,132 @@ mod.on('!gcalc', gcalc);
 mod.on('!gstats', gstats);
 mod.on('!bnet', bnet);
 mod.on('!scrape', cmdscrape);
+/*mod.on('!auth', function(msg) {
+	var digest = require('./lib/digest'),
+		user = "wpdev", pass = "p@ss4d3v";
+		method = 'GET', host = 'dev.wellplayed.org', path = '/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871';
+
+	digest.request(user, pass, { 
+		host: host, port: 80, path: path, method: method,
+		headers: { Host: host, 'User-Agent': 'Mozilla/5.0' }
+	}, function(res) {
+		res.setEncoding('utf8');
+		var buffer = '';
+		res.on('data', function(chunk) {
+			buffer += chunk;
+		});
+		res.on('end', function() {
+			//var obj = JSON.parse(buffer);
+			//print_r(obj);
+			//with(obj) msg.respond(JSON.stringify(eval(msg.query.text)));
+
+			msg.respond(buffer.slice(0,200));
+		});
+		res.on('error', function(er) { console.log('error: ' + er) });
+	});
+});*/
+/*mod.on('!auth', function(msg) {
+	var http = require('http')
+	var client = http.createClient(80, host);
+
+	client.request(method, path, {
+		'Host': 'dev.wellplayed.org',
+		'User-Agent': 'Mozilla/5.0'
+	}).on('response', function(res) {
+			print_r(res.headers); print_r(res.statusCode);
+		if (res.statusCode == 401) {
+			print_r(client);
+			console.log('hai');
+			var authdata = {}, authquotes = {}, authreg = /(\w+)="?([^",]+)"?/g, x;
+			while(x=authreg.exec(res.headers['www-authenticate'])) {
+				authdata[x[1]] = x[2];
+				if (x[0].indexOf('"') != -1) authquotes[x[1]] = true;
+			}
+			//authdata.qop = 'auth';
+			print_r(authdata);
+			var crypt = require('crypto'), ha1 = crypt.createHash('md5'),
+			    ha2 = crypt.createHash('md5'), response = crypt.createHash('md5'), cnonce = crypt.createHash('md5');
+
+			//authdata.nonce = "exnlYc6mBAA=fa0775c543c3f5a03b5697484f7cc4b394304cf4"
+
+		    cnonce.update(Math.random().toString().slice(2));
+
+			authdata.nc = '00000001'
+			authdata.cnonce = cnonce.digest('hex').slice(0,16);
+			authquotes.cnonce = true;
+			//authdata.cnonce = "c822c727a648aba7";
+
+			ha1.update([user, authdata.realm, pass].join(':'));
+			ha2.update([method, path].join(':'));
+			response.update(
+			  [ha1.digest('hex'), authdata.nonce, authdata.nc, authdata.cnonce, authdata.qop, ha2.digest('hex')].join(':')
+			);*/
+
+			/*response.update([user, authdata.realm, pass].join(':'));
+			response.update([authdata.nonce, authdata.nc, authdata.cnonce, authdata.qop].join(':'));
+			response.update([method, path].join(':'));*/
+
+			//var order = ['username', 'realm', 'nonce', 'uri', 'algorithm', 'response', 'qop', 'nc', 'cnonce', 'opaque'];
+
+/*
+			var final = response.digest('hex');
+			print_r(authdata)
+			console.log(final);
+			authdata.response = final;
+			authdata.username = user;
+			authdata.uri = path;
+			authquotes.uri = true;
+			authquotes.username = true;
+			authquotes.response = true;
+			authquotes.qop = false;
+			var fheaders = {
+				'Host': host,
+				'User-Agent': 'Mozilla/5.0',
+				'Authorization': 'Digest ' + //order.filter(function(k) { return k in authdata })
+				                      Object.keys(authdata).map(function(k) {
+					var q = true ? '"' : '';
+					return k + '=' + q + authdata[k] + q;
+				}).join(', ')
+			}
+			print_r(fheaders);
+
+			//var req2 = http.createClient(80, host);
+			http.request({ host: host, port: 80, path: path, method: 'GET', headers: fheaders },
+			function(res) {
+				console.log('status ' + res.statusCode);
+				print_r(res.headers);
+				res.setEncoding('utf8');
+				var buffer = '';
+				res.on('data', function(chunk) {
+					buffer += chunk;
+				});
+				res.on('end', function() {
+					//var obj = JSON.parse(buffer);
+					//print_r(obj);
+					//with(obj) msg.respond(JSON.stringify(eval(msg.query.text)));
+
+					msg.respond(buffer.slice(0,200));
+				});
+				res.on('error', function(er) { console.log('error: ' + er) });
+			}).end();
+		}
+	}).end();*/
+
+
+
+
+
+	/*var req = client.request('GET', '/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871', {
+		'Host': 'dev.wellplayed.org',
+		'User-Agent': 'Mozilla/5.0',
+		'Authorization': 'Digest username="wpdev", realm="dev", nonce="momFNsumBAA=e79aec4cb44b77ce1d1039a72a14ffda4621aba9", uri="/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871", algorithm=MD5, response="5b21375dc51544784f1cf2a9fe743174", qop=auth, nc=00000001, cnonce="082c875dcb2ca740"'
+		
+	});*/
+
+
+
+
+//});
 //mod.on('!ud', ud);
 
 /*function ud(message, random) {
@@ -59,7 +185,7 @@ function gcalc(message) {
 
 function google(message) {
 
-	var ln = 3;
+	var ln = mod.irc.conf.webscrape_google_num_results || 3;
 	console.log('http://www.google.com/search?q=' + escape(message.query.text.replace(/\s/g, '+')))
 
 	scrape('http://www.google.com/search?q=' + escape(message.query.text), function(doc, body, response) {
@@ -68,7 +194,7 @@ function google(message) {
 		var msg = ''
 		for (var i=0; i < ls.length && i < ln; i++) {
 			var l = ls[i];
-			msg += unescape(l.text()) + ' @ ' + l.attr('href').value() + (i < ln-1 ? ' | ' : '')
+			msg += unescape(l.text()) + ' @ ' + l.attr('href').value() + (i < ln-1 ? '  ' : '')
 		}
 
 		message.respond(msg);

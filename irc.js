@@ -290,7 +290,7 @@ IRC.addPrototype({
 		var file;
 		if (typeof name == 'function') {
 			file = name;
-			name = file.toString().match(/^\s*function\s+([\w\d$_]+)/)[1] || 'inline' + ++this.inline_count;
+			name = (file.toString().match(/^\s*function\s+([\w\d$_]+)/) || [])[1] || 'inline' + ++this.inline_count;
 		} else if (typeof name == 'string' && (name[0] == '.' || name[0] == '/')) {
 			file = name + '.js';
 		} else {

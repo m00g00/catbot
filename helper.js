@@ -119,6 +119,37 @@ var object = {
 		} else {
 		    object.iterate(obj, func, self);
 		}
+	},
+
+	clone: function(obj) {
+		var nobj = {};
+		for (var key in obj) if (obj.hasOwnProperty(key))
+			nobj[key] = obj[key];
+		return nobj;
+	},
+
+	map: function(obj, func, self) {
+		var nobj = {};
+		for (var key in obj) if (obj.hasOwnProperty(key))
+			nobj[key] = func.call(self, obj[key], key, obj);
+		return nobj;
+	},
+
+	kmap: function(obj, func, self) {
+		var nobj = {}, ans;
+		for (var key in obj) if (obj.hasOwnProperty(key)) {
+			ans = func.call(self, obj[key], key, obj);
+			nobj[ans[0]] = ans[1];
+		}
+		return nobj;
+	},
+
+	filter: function(obj, func, self) {
+		var nobj = {};
+		for (var key in obj) if (obj.hasOwnProperty(key)) {
+			if (func.call(self, obj[key], key, obj)) nobj[key] = obj[key];
+		}
+		return nobj;
 	}
 
 	/*get _() {
@@ -126,6 +157,8 @@ var object = {
 	}*/
 		
 };
+
+object.each = object.forEach;
 
 var array = {
 	getLast: function(arr) {
@@ -413,7 +446,7 @@ var log = {
 	colors: {
 	  reset: "\x1B[0m",
 
-	  grey: "\x1B[0;30m",
+	  grey: "\x1B[2;0m",
 	  red: "\x1B[0;31m",
 	  green: "\x1B[0;32m",
 	  yellow: "\x1B[0;33m",

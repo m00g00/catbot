@@ -3,6 +3,10 @@ var constants = {
 };
 global.constants = constants;
 
+global.share = {
+	process_start_time: new Date
+};
+
 var log = {};
 require('./helper').
 	place({
@@ -16,6 +20,7 @@ require('./helper').
 
 
 global.print_r = log.print_r;
+global.dump = log.print_r;
 global._prs = log.prs;
 global.var_dump = function(val) {
 	print_r(val, true, 8, null, true);
@@ -27,24 +32,33 @@ process.on('uncaughtException', function(err) {
 	//process.exit(1);
 });
 
-process.on('SIGINT', function() {
-	console.error('SIGINT CAUGHT: Closing connections...');
-	process.removeListener('SIGINT', arguments.callee);
+process.once('SIGINT', function catcher() {
+	console.error('SIGINT CAUGHT: Are you sure?');
 
-	var closed = 0, num = servers.numProperties();
-	servers.forEach(function(server) {
-		server.on('close', function() {
-			this.destroy();
+	setTimeout(function() {
+		process.removeAllListeners('SIGINT');
+		process.once('SIGINT', catcher);
+	}, 10000);
 
-			closed++;
+	process.once('SIGINT', function() {
+		console.error('SIGINT CAUGHT: Closing connections...');
 
-			if (closed == num) {
-				console.error('ALL DONE, BAI');
-				process.kill(process.pid);
-			}
+
+		var closed = 0, num = servers.numProperties();
+		servers.forEach(function(server) {
+			server.on('close', function() {
+				this.destroy();
+
+				closed++;
+
+				if (closed == num) {
+					console.error('ALL DONE, BAI');
+					process.kill(process.pid);
+				}
+			});
+
+			server.common.quit(server.conf.quit_msg)
 		});
-
-		server.common.quit(server.conf.quit_msg)
 	});
 });
 
@@ -60,13 +74,13 @@ log.important('\nHAI I IN UR SERVER RUNNING UR BOTZ\n');
 //var Script = process.binding('evals').Script;
 var Script = require('./lib/scripter');
 var cfiles = process.argv.slice(2);
-cfiles.forEach(function(cf) {
-	Script.runFileSyncInThisContext(cf);
+var loadFile = function(file) {
+	Script.runFileSyncInThisContext(file);
 	global.servers[config.id] = irc.createConnection(config);
-	/*global.servers.push(
-		irc.createConnection(config)
-	);*/
-});
+};
+
+cfiles.forEach(loadFile);
+
 if (constants.USE_REPL && !repl.context.irc) {
 	global.servers.forEach(function(v,n) {
 		repl.context[n] = v;
@@ -82,6 +96,21 @@ if (constants.USE_REPL && !repl.context.irc) {
 	['reloadModule', 'loadModule', 'unloadModule'].forEach(function(n) {
 		repl.context[n] = function() { var args = arguments; servers.forEach(function(s) { s[n].apply(s, args) }) };
 	});
+
+	repl.context.loadFile = loadFile; 
+
+	repl.context.watchModule = function(name) {
+		require('fs').watchFile('./modules/' + name + '.js', function(curr, prev) {
+			if (curr.mtime > prev.mtime) { 
+				reloadModule(name)
+			}
+		});
+	};
+
+	repl.context.unwatchModule = function(name) {
+		require('fs').unwatchFile('./modules/' + name + '.js');
+	}
+
 	//repl.context.reloadModule = function(name) { call(function(s) { s.reloadModule(name) }) };
 	//repl.context.reloadModule = function(name) { call(function(s) { s.reloadModule(name) }) };
 }

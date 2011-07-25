@@ -1,4 +1,4 @@
-var log = require('./helper').log;
+var log = require('./helper').log, meta = require('./lib/meta');
 
 mod.on('!quote', quote);
 mod.on('!quoteall', quoteall);
@@ -11,6 +11,7 @@ mod.on('!log', loginfo);
 mod.on('!stats', stats);
 
 mod.on('!talk', talk);
+mod.on('!smart', function(msg) { talk(msg, true) });
 mod.on('PRIVMSG', talkaboutme);
 
 mod.on('PRIVMSG', expireCache);
@@ -25,30 +26,67 @@ temp.connect({ file: ':memory:' }, function() {
 	temp.query('INSERT INTO wtf VALUES ("BLARGH", "ASDJKASHKDJASH")');
 	temp.query('select * from wtf', function(res) { print_r(res); });
 });*/
+if (!global.share.temptables) global.share.temptables = {};
+var temptables = global.share.temptables;
 
-var temptables = {};
+var nmem = 'cache';
+//var nmem = mod.irc.getId();
+//var nmom = 'mem';
 
-var nmem = mod.irc.getId();
-
-db.query("PRAGMA database_list", function(result) {
-	//console.log(typeof result);
-
-if (!result.some(function(d) { return d.name == nmem }))
-	db.query("ATTACH DATABASE ':memory:' AS " + nmem);
-else 
+function findTemptables() {
 	db.query("SELECT name FROM "+nmem+".sqlite_master WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%'", function(result) {
 		result.forEach(function(row) {
-			temptables[row.name] = true;
+			global.share.temptables[row.name] = true;
 		});
 
-		print_r(temptables);
+		print_r(global.share.temptables);
 	});
+}
 
-});
+if (!global.share.dbattached && !global.share.dbattaching) {
+	global.share.dbattaching = true;
+	
+	//db.query("PRAGMA database_list", function(result) {
+
+		//if (!result.some(function(d) { return d.name == nmem }))
+	db.query("ATTACH DATABASE './lib/database/log.cache.db' AS " + nmem, 
+	function() { 
+		global.share.dbattached = true;
+		global.share.dbattaching = false;
+		
+		findTemptables();
+	});
+		//else findTemptables();
+
+	//});
+}
+
+function getMemTables(callback) {
+	db.query("SELECT name FROM " + nmem + ".sqlite_master WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%'", function(result) {
+		callback(result.map(function(e) { return e.name }));
+	});
+}
+
+/*function getMemTables(callback) {
+	var memtables = [], done = {};
+	db.query("PRAGMA database_list", function(result) {
+		result.filter(function(e) { return !e.file }).map(function(e) { return e.name }).forEach(function(name) {
+			done[name] = false;
+			db.query("SELECT name FROM "+name+".sqlite_master WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%'", function(result) {
+				memtables = memtables.concat(result.map(function(e) { return name + '.' + e.name }));
+				done[name] = true;
+
+				if (Object.keys(done).every(function(k) { return done[k] == true })) callback(memtables);
+
+			});
+		});
+	});
+}*/
+
 
 mod.on('JOIN', function(message) {
 	if (message.direction == 'incoming' && message.fromMe()) { 
-		db.query("PRAGMA table_info(%)".f(normalizeChan(message.channel)), function(result) {
+		db.query("PRAGMA table_info(\"%\")".f(normalizeChan(message.channel)), function(result) {
 		
 		if (!result.length)
 			createChanTable(message.channel, mod.irc.getServerName());
@@ -57,8 +95,160 @@ mod.on('JOIN', function(message) {
 	}
 });
 
+var channels = {}, tmplst = {}, CHAN_NICK_ERROR = "Unable to update channel nick list";
+exports.channels = channels;
+
+var chanutils = {
+	addChan: function(chan, nicklist) { nicklist = nicklist ? chanutils.parseNickList(nicklist) : []; channels[chan] = { nicks: nicklist } },
+	remChan: function(chan) { delete channels(chan) },
+	parseNickList: function(nicklist) { return nicklist.map(function(n) { return chanutils.parseNick(n) }) },
+	/*parseNick: function(nick) { 
+		var a = /^([@\+%]*)(.*)/.exec(nick).slice(1).reverse(); 
+		Object.defineProperty(a, 'toString', { value: function() { return this[0] } });
+		return a;
+	},*/
+	parseNick: function(nick) {
+		var p = /^([@\+%&~]*)(.*)/.exec(nick),
+			nicko = { name: p[2] };
+
+		({ op: '@', halfop: '%', voice: '+', admin: '&', owner: '~' }).forEach(function(v, k) {
+			nicko[k] = p[1].indexOf(v) != -1 ? true : false;
+		});
+
+		Object.defineProperty(nicko, 'toString', { value: function() { return this.name } });
+
+		return nicko;
+	},
+	findNick: function(nick, chan) {
+		if (!channels[chan]) return;
+
+		var nicko, nicki;
+		channels[chan].nicks.some(function(n, i) {
+			if (n.name.toLowerCase() == nick.toLowerCase()) {
+				nicko = n;
+				nicki = i;
+				return true;
+			}
+		});
+
+		if (!nicko) return;
+
+		return [nicko, nicki];
+	},
+	addNick: function(nick, chan) { 
+		if (!channels[chan]) chanutils.addChan(chan); 
+		channels[chan].nicks.push(chanutils.parseNick(nick)) },
+	remNick: function(nick, chan) { 
+		var pos = chanutils.findNick(nick, chan);
+		if (pos) channels[chan].nicks.splice(pos[1], 1);
+	},
+	addNicksFromNames: function(message) {
+		var chan = message.params[2];
+		var nicks = message.text.trim().split(/\s+/);
+		if (!tmplst[chan]) tmplst[chan] = [];
+		tmplst[chan].push.apply(tmplst[chan], nicks);
+	},
+	commitNicks: function(chan) {
+		if (!tmplst[chan]) return;
+		if (!channels[chan]) chanutils.addChan(chan, tmplst[chan]);
+		else channels[chan].nicks = chanutils.parseNickList(tmplst[chan]);
+
+		delete tmplst[chan];
+	}
+};
+
+mod.irc.state.channels.forEach(function(chan) {
+	if (!channels[chan]) {
+		com.echo('NAMES ' + chan);
+	}
+});
+
+mod.on('MODE', function(message) {
+	var chan = message.params[0], nick, nicko, mod, type;
+	if (channels[chan]) {
+		nick = message.params[2];
+		nicko = chanutils.findNick(nick, chan);
+		if (nicko) {
+			mod = message.params[1][0];
+			type = message.params[1][1];
+
+			nicko[0][{ o: 'op', h: 'halfop', v: 'voice', a: 'admin', q: 'owner' }[type]] = mod == '+' ? true : false;
+		}
+	}
+			/*.forEach(function(v, k) {
+				if (k == type) { nicko[v] = mod == '+' ? true : false; return false }
+			});
+			nicko[(function() { switch(type) { case 'o': return 'op'; case 'h': return 'halfop' } })()] = mod*/
+});
+
+
+mod.on('JOIN', function(message) {
+	if (message.direction == 'outgoing' && message.fromMe())
+		chanutils.addChan(message.channel);
+});
+
+mod.on('JOIN', function(message) {
+	if (!message.fromMe()) chanutils.addNick(message.nick, message.channel);
+});
+
+
+mod.on('PART', function(message) {
+	if (message.direction == 'outgoing' && message.fromMe()) chanutils.remChan(message.channel);
+});
+
+mod.on('PART', function(message) {
+	if (!message.fromMe()) chanutils.remNick(message.nick, message.channel);
+});
+
+mod.on('QUIT', function(message) {
+	if (!message.fromMe()) channels.forEach(function(chan) {
+		chanutils.remNick(message.nick, chan);
+	});
+});
+
+mod.on('NICK', function(message) {
+	channels.forEach(function(obj, chan) {
+		var nicko = chanutils.findNick(message.nick, chan);
+
+		if (nicko) nicko[0].name = message.params[0];
+	});
+});
+
+
+mod.on(353, function(message) {
+	chanutils.addNicksFromNames(message);
+});
+
+mod.on(366, function(message) {
+	chanutils.commitNicks(message.params[1]);
+});
+
+
+mod.on('PRIVMSG', function beer(message) {
+	var match = message.text.match(/^(.*?)(\+\+|--)$/);
+	if (!match) return;
+
+	var nick = chanutils.findNick(match[1], message.channel);
+
+	if (nick) {
+		var nickname = nick[0].name, ident = { type: 'nick', name: nickname, server: mod.irc.getServerName(), channel: message.channel, key: 'beers' }; 
+		meta.get(ident, function(obj) {
+			if (!('beers' in obj)) obj.beers = 0;
+			obj.beers += (match[2] == '++' ? 1 : -1);
+			meta.update(obj);
+
+			message.respond(nickname + " now has " + obj.beers + " beer" + (obj.beers == 1 || obj.beers == -1 ? '' : 's'));
+		});
+	}
+});
+
+//setMeta('nick', nick, 'beers', '+1', server, channel)
+
+
+
 function normalizeChan(chan) {
-	return typeof chan == 'string' ? chan.replace(/[^A-Za-z0-9_]/g, '').toLowerCase() : false;
+	return typeof chan == 'string' ? mod.irc.getId() + '::' + chan.toLowerCase() : false;
+	//return typeof chan == 'string' ? /*mod.irc.getId() + '_' +*/ chan.replace(/[^A-Za-z0-9_]/g, '').toLowerCase() : false;
 }
 
 
@@ -71,11 +261,13 @@ function createChanTable(channel, server) {
   			  "INSERT INTO {mem}.{chan} (docid, nick, content) " +
   			  "SELECT loginfo.rowid, nick, content FROM loginfo, logtext " +
   			  "WHERE channel = '{channel}' AND server = '{server}' AND type = 'PRIVMSG' " +
-  			  "AND self = 0 AND SUBSTR(content, 1, 1) != '!' AND SUBSTR(content, 1, 1) != '.' AND loginfo.rowid = logtext.docid; COMMIT").fo({mem: nmem, chan: chan, channel: channel, server: server});
+  			  "AND self = 0 AND SUBSTR(content, 1, 1) != '!' AND SUBSTR(content, 1, 1) != '.' AND loginfo.rowid = logtext.docid; COMMIT").fo({mem: nmem, chan: '"' + chan + '"', channel: channel, server: server});
 
 
 		log.question('Creating temp table for ' + chan);
 		db.exec(cq, function(res) {
+
+			if (res !== null) throw res
 			temptables[chan] = true;
 			log.success('Temp table % created'.f(chan));
 		});
@@ -101,12 +293,12 @@ function irclog(message) {
 		message.channel,
 		mod.irc.getServerName(),
 		message.direction == 'outgoing' ? 1 : 0,
-		message.raw
+		//message.raw
 	];
 
 	var chan = normalizeChan(message.channel);
 
-	var sqlinfo = "INSERT INTO loginfo VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+	var sqlinfo = "INSERT INTO loginfo VALUES (?, ?, ?, ?, ?, ?, ?)";
 	var sqltext = "INSERT INTO logtext (docid, content) VALUES (LAST_INSERT_ROWID(), ?)";
 	var sqlcache = "INSERT INTO % (docid, nick, content) VALUES (LAST_INSERT_ROWID(), ?, ?)";
 
@@ -114,7 +306,7 @@ function irclog(message) {
 		tx.executeSql(sqlinfo, params);
 		tx.executeSql(sqltext, [message.text]);
 		if (chan && temptables[chan] && message.direction == 'incoming' && message.text[0] != '!' && message.command == 'PRIVMSG') 
-			tx.executeSql(sqlcache.f(nmem + '.' + chan), [message.from, message.text]);
+			tx.executeSql(sqlcache.f(nmem + '."' + chan + '"'), [message.from, message.text]);
 	});
 }
 
@@ -259,7 +451,7 @@ function makeQuery(p) {
 
 			var chan = normalizeChan(p.channel);
 
-			sql = "SELECT % FROM %".f(
+			sql = "SELECT % FROM \"%\"".f(
 				fields.join ? fields.join(', ') : fields,
 				chan
 			);
@@ -269,10 +461,10 @@ function makeQuery(p) {
 				if (p.nick) match += 'nick: ' + p.nick + ' ';
 				if (p.text) match += 'content: ' + p.text;
 
-				sql += ' WHERE % MATCH ?'.f(chan);
+				sql += ' WHERE "%" MATCH ?'.f(chan);
 				param.push(match);
 			} else {
-				sql += " LIMIT 1 OFFSET (SELECT abs(random()) % count(*) FROM " + chan + ")";
+				sql += " LIMIT 1 OFFSET (SELECT abs(random()) % count(*) FROM \"" + chan + "\")";
 				//sql += " ORDER BY RANDOM() LIMIT 1";
 				cache = false;
 			}
@@ -358,12 +550,13 @@ var quotefail = 'I cants find :(';
 function quote(message) {
 	
 	var querytxt = message.query.text.trim(),
-		chan, qp = querytxt.split(' ');
+		chan, qp = querytxt.split(/<(.*?)>|\s+/).filter(function(e) { return e != '' && typeof e != 'undefined' });
 
 	if (querytxt[0] == '"' || querytxt[0] == "'") {
 		quoteall(message);
 		return;
 	} else if (querytxt[0] == '#') {
+		console.log("CHAN");
 		chan = qp.shift();	
 	} else if (message.channel) {
 		chan = message.channel
@@ -371,6 +564,8 @@ function quote(message) {
 		message.respond("No channel specefied");
 		return;
 	}
+
+	dump(temptables);
 
 	if (temptables[normalizeChan(chan)] != true) {
 		message.respond("Channel not found");
@@ -516,7 +711,7 @@ function stats(message) {
 		nick = query[0];
 	}
 
-	var qcount = 'SELECT count(*) c, min(docid) minid, max(docid) maxid FROM % WHERE nick MATCH ?'.f(chan);
+	var qcount = 'SELECT count(*) c, min(docid) minid, max(docid) maxid FROM "%" WHERE nick MATCH ?'.f(chan);
 	var qftime = 'SELECT timestamp FROM loginfo WHERE rowid = ? OR rowid = ? ORDER BY timestamp ASC';
 	//var qltime = 'SELECT timestamp FROM loginfo WHERE rowid = ?';
 
@@ -554,18 +749,49 @@ function stats(message) {
 
 }
 
+var dontspeak = false;
 function talkaboutme(message) {
-	if (message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message);
+	if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message);
 }
 
-function talk(message) {
+exports.chatPrependNick = false;
+
+var timeout = null;
+mod.on('!stfu', function() {
+	if (!timeout) {
+		dontspeak = true;
+		timeout = setTimeout(function() { dontspeak = false; timeout = null }, 3000);
+	}
+});
+
+function talk(message, useall) {
 	var text = message.text[0] == '!' ? message.query.text : message.text,
 		seeds = text.replace(/[^A-Za-z0-9' ]/g, '').split(' ').filter(function(w) { return w.toLowerCase() != mod.irc.state.nick.toLowerCase() }),
-		dbname = nmem + '.' + normalizeChan(message.channel),
 		order = 2,
-		max = 20;
+		max = 20,
+		tblquery = function(table) { return 'SELECT content FROM "' + table + '" WHERE content MATCH $term' };
 
 	seeds.sort(function(a,b) { return b.length - a.length });
+
+	if (useall) {
+		var usechan;
+		if (useall && message.query.args[0][0] == '#') {
+			usechan = normalizeChan(message.query.args[0]);
+			seeds = seeds.filter(function(s) { return s != usechan.toLowerCase() });
+		}
+		getMemTables(function(tables) {
+			chain(tables.filter(function(t) {
+				return !usechan || (usechan && usechan == t.split('.')[1]);
+			}).map(tblquery).join(' UNION '));
+		});
+	} else {
+		chain(tblquery(normalizeChan(message.channel)));
+	}
+
+
+	function chain(query) {
+		/*console.log(query);
+		console.log(seeds);*/
 
 	var sentance = [seeds.shift()];
 
@@ -575,7 +801,7 @@ function talk(message) {
 		sentance.push(set);
 
 		if (/*sentance.length >= max || */!sentance.last || set.split(' ').length < order) {
-			message.respond(sentance.join(' '));
+			message.respond((exports.chatPrependNick ? message.from + ': ' : '') + sentance.join(' '));
 		} else {
 			getNext(set, order, arguments.callee);
 		}
@@ -583,8 +809,8 @@ function talk(message) {
 
 	function getNext(term, order, callback) {
 		term = term.replace(/["]/g, '');
-		console.log(term);
-		db.query('SELECT content FROM % WHERE content MATCH ?'.f(dbname), ['"' + term + '"'],
+		//console.log(term);
+		db.query(query, { $term: '"' + term + '"' },
 			function(result) {
 				var next = [];
 				result.forEach(function(i) {
@@ -600,6 +826,7 @@ function talk(message) {
 				callback(next.length ? next.getRandom() : null);
 			}
 		);
+	}
 	}
 
 }
