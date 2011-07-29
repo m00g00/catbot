@@ -82,6 +82,7 @@ var IRCMessage = {
 		txtSplit(text).forEach(function(l) {
 			var clone = response.clone();
 			clone.text = l;
+			//dump(clone);
 			//print_r(clone);
 			echo(clone);
 		});
@@ -221,6 +222,7 @@ var IRCMessage = {
 
 };
 
+exports.IRCMessage = IRCMessage;
 
 var parse = function(line, direction) {
 	var message = {

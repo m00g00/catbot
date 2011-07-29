@@ -13,6 +13,9 @@ mod.on('!gcalc', gcalc);
 mod.on('!gstats', gstats);
 mod.on('!bnet', bnet);
 mod.on('!scrape', cmdscrape);
+
+mod.on('!mdn', function(msg) { goog(msg.query.text + ' site:developer.mozilla.org', msg.respond.bind(msg)) });
+
 /*mod.on('!auth', function(msg) {
 	var digest = require('./lib/digest'),
 		user = "wpdev", pass = "p@ss4d3v";
@@ -182,13 +185,16 @@ function gcalc(message) {
 	});
 }
 
-
 function google(message) {
+	goog(message.query.text, message.respond.bind(message));
+}
+
+function goog(query, resp) {
 
 	var ln = mod.irc.conf.webscrape_google_num_results || 3;
-	console.log('http://www.google.com/search?q=' + escape(message.query.text.replace(/\s/g, '+')))
+	//console.log('http://www.google.com/search?q=' + escape(message.query.text.replace(/\s/g, '+')))
 
-	scrape('http://www.google.com/search?q=' + escape(message.query.text), function(doc, body, response) {
+	scrape('http://www.google.com/search?q=' + escape(query), function(doc, body, response) {
 		var ls = doc.find('//li[not(@id)]//h3/a');
 
 		var msg = ''
@@ -197,7 +203,7 @@ function google(message) {
 			msg += unescape(l.text()) + ' @ ' + l.attr('href').value() + (i < ln-1 ? '  ' : '')
 		}
 
-		message.respond(msg);
+		resp(msg);
 	});
 }
 

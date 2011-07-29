@@ -9,6 +9,7 @@ mod.on('!qs', qs);
 mod.on('!log', loginfo);
 
 mod.on('!stats', stats);
+mod.on('!statsinfo', chanstats);
 
 mod.on('!talk', talk);
 mod.on('!smart', function(msg) { talk(msg, true) });
@@ -546,9 +547,7 @@ var quotefail = 'I cants find :(';
 	print_r(m.query.text.splitFirstWord())
 	//print_r(require('./helper').string.splitFirstWord(m.query.text))
 });*/
-
-function quote(message) {
-	
+function quoteparams(message) {
 	var querytxt = message.query.text.trim(),
 		chan, qp = querytxt.split(/<(.*?)>|\s+/).filter(function(e) { return e != '' && typeof e != 'undefined' });
 
@@ -556,32 +555,46 @@ function quote(message) {
 		quoteall(message);
 		return;
 	} else if (querytxt[0] == '#') {
-		console.log("CHAN");
 		chan = qp.shift();	
 	} else if (message.channel) {
 		chan = message.channel
 	} else {
-		message.respond("No channel specefied");
-		return;
+		throw Error("No channel specified");
+		//message.respond("No channel specefied");
+		//return;
 	}
 
-	dump(temptables);
+	//dump(temptables);
 
 	if (temptables[normalizeChan(chan)] != true) {
-		message.respond("Channel not found");
-		return;
+		throw Error("Channel not found");
+		/*message.respond("Channel not found");
+		return;*/
 	}
 
 	//var qp = message.query.text.splitFirstWord();
+	var fulltext = qp.join(' ');
 
 	var nick = qp.shift();
 	var text = qp.join(' ');
 
+	return { nick: nick, channel: chan, server: mod.irc.getServerName(), text: text, fulltext: fulltext };
+}
+
+
+function quote(message) {
+	try {
+	var p = quoteparams(message);
+	} catch(e) { 
+	message.respond(e);
+	return
+	}
+
 	var q = makeQuery({
-		nick: nick,
-		channel: chan,
-		server: mod.irc.state.server,
-		text: text
+		nick: p.nick,
+		channel: p.channel,
+		server: p.server,
+		text: p.text
 	});
 
 	q.execute(function(result) {
@@ -591,10 +604,16 @@ function quote(message) {
 }
 
 function quoteall(message) {
+	try {
+	var p = quoteparams(message);
+	} catch(e) { 
+	message.respond(e);
+	return
+	}
 	var q = makeQuery({
-		channel: message.channel,
-		server: mod.irc.state.server,
-		text: message.query.text
+		channel: p.channel,
+		server: p.server,
+		text: p.fulltext
 	});
 
 	q.execute(function(result) {
@@ -691,6 +710,21 @@ function echoLines(lines, message) {
 	});
 }
 
+function chanstats(message) {
+	var linenum, timefirstline;
+	db.query('SELECT count(*) c FROM loginfo WHERE channel = ? AND server = ?', [message.channel, mod.irc.getServerName()], function(res) {
+		linenum = res[0].c;
+
+		db.query('SELECT timestamp FROM loginfo WHERE channel = ? AND server = ? ORDER BY rowid LIMIT 1', [message.channel, mod.irc.getServerName()], function(res) {
+			timefirstline = res[0].timestamp;
+
+			message.respond(message.channel + ': logged ' + linenum + ' lines since ' + timefirstline);
+		})
+	});
+}
+
+
+
 function stats(message) {
 	var query = message.qtxt.split(/\s+/);
 
@@ -706,7 +740,7 @@ function stats(message) {
 
 		nick = query[1];
 	} else {
-		chan = normalizeChan(message.channel.substr(1));
+		chan = normalizeChan(message.channel);
 
 		nick = query[0];
 	}
@@ -780,6 +814,7 @@ function talk(message, useall) {
 			seeds = seeds.filter(function(s) { return s != usechan.toLowerCase() });
 		}
 		getMemTables(function(tables) {
+			dump(tables);
 			chain(tables.filter(function(t) {
 				return !usechan || (usechan && usechan == t.split('.')[1]);
 			}).map(tblquery).join(' UNION '));

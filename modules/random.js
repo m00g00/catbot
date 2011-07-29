@@ -3,8 +3,8 @@ mod.on('!pi', pi);
 mod.on('!commands', listcommands);
 mod.on('!math', math);
 mod.on('!spell', spell);
-mod.on([',js', '..'], js);
-mod.on([',jsreset', ',jsr'], force_resetcontext);
+mod.on(['.js', '..'], js);
+mod.on(['.jsreset', '.jsr'], force_resetcontext);
 ['!rock', '!paper', '!scissors'].forEach(function(e) {
 	mod.on(e, rps);
 });
@@ -145,17 +145,15 @@ function kaffine_compile(code) {
 
 var jsctx = {};
 function spawncontext(message) {
-		var child = require('./lib/fork').fork(function() {
+		var msgs = [],
+			getmsg = function() { return msgs.shift(); },
+			child = require('./lib/fork').fork(function() {
 			var vm = require('vm'),
 				util = require('util'),
 				//inspect = util.inspect,
 				inspect = require('./eyes').inspector({ 
-					/*styles: { 
-						key: 'yellow',
-						bool: 'red',
-						special: 'cyan',
-						string: 'green'
-					},*/
+					styles: { 
+					},
 					pretty: false, 
 					stream: null,
 					maxLength: 200
@@ -218,7 +216,7 @@ function spawncontext(message) {
 				ping = false;
 			} else if (m == '#DONE') {
 				console.log(buffer);
-				message.respond(buffer.map(function(b) {
+				getmsg().respond(buffer.map(function(b) {
 					return (b.length > 200 ? b.substr(0, 200) + '\x0f ...' : b).replace(/\n/g, '\\n');
 				}).join('; '));
 				buffer.length = 0;
@@ -231,24 +229,29 @@ function spawncontext(message) {
 		});
 
 		child.on('error', function(e) {
-			message.respond(
+			getmsg().respond(
 				e.replace(/\n/g, '')
 			);
 		});
 
 		var _post = child.post;
-		child.post = function(obj, p) {
-			_post(obj);
-			if (!p) setTimeout(function() {
-				ping = true;
-				child.post('#PING', true)
+		child.post = function(msg, p) {
+			if (p) _post(msg)
+			else { 
+				msgs.push(msg); 
+				_post(msg.query.text);
+
 				setTimeout(function() {
-					if (ping) {
-						child.emit('error', 'Error: Timeout');
-						resetcontext(message);
-					}
-				}, 500);
-			}, 5000);
+					ping = true;
+					child.post('#PING', true)
+					setTimeout(function() {
+						if (ping) {
+							child.emit('error', 'Error: Timeout');
+							resetcontext(getmsg());
+						}
+					}, 500);
+				}, 5000);
+			}
 		};
 
 		return child;
@@ -278,7 +281,7 @@ function js(message) {
 
 	var ctx = jsctx[ctxname] || (jsctx[ctxname] = spawncontext(message));
 
-	ctx.post(message.query.text);
+	ctx.post(message);
 }
 
 
@@ -333,12 +336,17 @@ function math(message) {
 
 
 function listcommands(message) {
-	var list = [];
+	var list = [], cmdfilter;
+	if (mod.irc.conf.filter)
+		cmdfilter = mod.irc.conf.filter.filter(function(f) { return f.channels.indexOf(message.channel) != -1 });
+
+		print_r(cmdfilter);
+
 	mod.irc.modules.forEach(function(module, name) {
 		console.log(name);
 		if (module._events) module._events.forEach(function(action, command) {
 			var cp = command.match(/^PRIVMSG ([^\w]\w+)/);
-			if (cp) {
+			if (cp && (!cmdfilter || !cmdfilter.length || cmdfilter.every(function(f) { return f.blacklist.indexOf(cp[1]) == -1 }))) {
 				list.push(cp[1]);
 			}
 		});
