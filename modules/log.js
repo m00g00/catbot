@@ -19,20 +19,10 @@ mod.on('PRIVMSG', expireCache);
 mod.on('RAW', irclog);
 
 var db = com.db;
-/*var temp = require('./lib/db').
-		   use(mod.irc.conf.database.type);
-
-temp.connect({ file: ':memory:' }, function() {
-	temp.query('CREATE TABLE wtf (dude, man)');
-	temp.query('INSERT INTO wtf VALUES ("BLARGH", "ASDJKASHKDJASH")');
-	temp.query('select * from wtf', function(res) { print_r(res); });
-});*/
 if (!global.share.temptables) global.share.temptables = {};
 var temptables = global.share.temptables;
 
 var nmem = 'cache';
-//var nmem = mod.irc.getId();
-//var nmom = 'mem';
 
 function findTemptables() {
 	db.query("SELECT name FROM "+nmem+".sqlite_master WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL TABLE%'", function(result) {
@@ -47,19 +37,13 @@ function findTemptables() {
 if (!global.share.dbattached && !global.share.dbattaching) {
 	global.share.dbattaching = true;
 	
-	//db.query("PRAGMA database_list", function(result) {
-
-		//if (!result.some(function(d) { return d.name == nmem }))
-	db.query("ATTACH DATABASE './lib/database/log.cache.db' AS " + nmem, 
+	db.query("ATTACH DATABASE '" + constants.PATH_ROOT + "/lib/database/log.cache.db' AS " + nmem, 
 	function() { 
 		global.share.dbattached = true;
 		global.share.dbattaching = false;
 		
 		findTemptables();
 	});
-		//else findTemptables();
-
-	//});
 }
 
 function getMemTables(callback) {
@@ -138,7 +122,12 @@ var chanutils = {
 	},
 	addNick: function(nick, chan) { 
 		if (!channels[chan]) chanutils.addChan(chan); 
-		channels[chan].nicks.push(chanutils.parseNick(nick)) },
+		var nicko = chanutils.parseNick(nick);
+		if (channels[chan].nicks.some(function(n) {
+			return n.name.toLowerCase() == nicko.name.toLowerCase() 
+		}))
+		channels[chan].nicks.push(chanutils.parseNick(nick))
+	},
 	remNick: function(nick, chan) { 
 		var pos = chanutils.findNick(nick, chan);
 		if (pos) channels[chan].nicks.splice(pos[1], 1);
@@ -638,7 +627,7 @@ function loginfo(message) {
 			return; 
 	}
 
-	var find_rowid = "(SELECT min(rowid) FROM (SELECT rowid FROM loginfo WHERE rowid < % ORDER BY rowid DESC LIMIT %))"
+	var find_rowid = "(SELECT min(rowid) FROM (SELECT rowid FROM loginfo WHERE rowid <= % ORDER BY rowid DESC LIMIT %))"
 
 	var rmod, rowid, n, limit, offset, sid, rowid = qparts[2];
 	if (rmod = qparts[1]) {
@@ -695,6 +684,12 @@ function echoLines(lines, message) {
 			case 'QUIT':
 				lmsg = "* {nick} has quit ({content})";
 				break;
+			case 'KICK':
+				lmsg = "* {nick} has been kicked by {content}";
+				break;
+			default:
+				lmsg = "* {nick} {type} {content}";
+				break;
 		}
 
 		line.channel = message.channel;
@@ -711,7 +706,10 @@ function echoLines(lines, message) {
 }
 
 function chanstats(message) {
-	var linenum, timefirstline;
+	var linenum, timefirstline, from, to;
+
+	
+
 	db.query('SELECT count(*) c FROM loginfo WHERE channel = ? AND server = ?', [message.channel, mod.irc.getServerName()], function(res) {
 		linenum = res[0].c;
 
@@ -783,9 +781,29 @@ function stats(message) {
 
 }
 
+mod.on('!markov', markov2);
+
+var mark = null;
+function markov2 (message) {
+
+	if (!mark) { 
+		mark = require('markov')(2)
+		message.respond("I iz thinking...");
+		db.query('SELECT content FROM "' + normalizeChan(message.channel) + '"', function(res) {
+			var seed = res.map(function(l) { return l.content }).join('\n');
+			mark.seed(seed, function() {
+				message.respond(mark.respond(message.query.text).join(' '));
+			});
+		});
+	} else {
+		message.respond(mark.respond(message.query.text).join(' '));
+	}
+}
+
+
 var dontspeak = false;
 function talkaboutme(message) {
-	if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message);
+	if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message, message.toMe());
 }
 
 exports.chatPrependNick = false;

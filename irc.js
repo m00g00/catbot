@@ -60,7 +60,7 @@ function IRC(conf) {
 IRC.inherits(Stream);
 
 IRC.addPrototype({
-	commands: {},
+	//commands: {},
 	//common: {},
 
 	initModules: function() {
@@ -72,7 +72,7 @@ IRC.addPrototype({
 	},
 
 	getServerName: function() {
-		return /^(?:[^.]+\.)?([^.]+)/(this.state.server)[1];
+		return this.conf.servername || /^(?:[^.]+\.)?([^.]+)/.exec(this.state.server)[1];
 	},	
 
 	baseEvents: function() {
@@ -148,7 +148,8 @@ IRC.addPrototype({
 				module.emit.apply(module, arguments);
 			} catch (e) {
 				loge('Module Event Exception');
-				print_r(e);
+				console.error(e.stack);
+				console.log(Object.getOwnPropertyNames(e));
 			}
 
 		}
@@ -243,11 +244,9 @@ IRC.addPrototype({
 
 		if (typeof mod == 'undefined') throw IRC.NO_SUCH_MODULE;
 
-		this.modules[mod].emit('UNLOAD');
-
-		delete this.modules[mod];
-
-		return true;
+		try { this.modules[mod].emit('UNLOAD') }
+		catch(e) { console.log(e.stack) }
+		return delete this.modules[mod];
 	},
 
 	reloadModules: function() {
@@ -294,7 +293,7 @@ IRC.addPrototype({
 		} else if (typeof name == 'string' && (name[0] == '.' || name[0] == '/')) {
 			file = name + '.js';
 		} else {
-			file = path.join(this.conf.path_modules, name) + '.js';
+			file = path.resolve(__dirname, this.conf.path_modules, name) + '.js';
 		}
 
 	    /*		file = (typeof name == 'function' || typeof name =='string' && (name[0] == '.' || name[0] == '/') ? 
@@ -406,17 +405,28 @@ Module.addPrototype({
 
 	eventFilter: null,
 
+	rewriteEvent: function(event) {
+		return this.irc.common.eventFilter instanceof Function ?
+			this.irc.common.eventFilter(event) : event;
+	},
+	
 	on: function(events, listener) {
 		if (!(events instanceof Array)) events = [events];
 
 		events.forEach(function(event) {
-			if (this.irc.common.eventFilter instanceof Function) {
-				event = this.irc.common.eventFilter(event);
-			}
+			event = this.rewriteEvent(event);
 
 			this.super_.on.call(this, event, listener);
 
 			this.emitAll('EVENT_REGISTERED', event, listener, this);
+		}, this);
+	},
+
+	removeListener: function(event, listener) {
+		Array.toArray(event).map(this.rewriteEvent, this).forEach(function(ev) {
+			this.super_.removeListener.call(this, ev, listener);
+
+			this.emitAll('EVENT_UNREGISTERED', ev, listener, this);
 		}, this);
 	},
 

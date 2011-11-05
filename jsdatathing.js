@@ -1,0 +1,1 @@
+{"dude":"face","whatnet":{"#hobbes":{"MooGoo":{"beers":1,"inspect":{}},"inspect":{"inspect":{}}},"inspect":{"inspect":{"inspect":{}}}},"inspect":{"inspect":{"inspect":{"inspect":{}}}},"a":{"inspect":{"inspect":{"inspect":{"inspect":{}}}},"b":{"inspect":{"inspect":{"inspect":{"inspect":{}}}},"c":{"inspect":{"inspect":{"inspect":{"inspect":{}}}}}}}}

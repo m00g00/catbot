@@ -1,0 +1,140 @@
+<svg version="1.1"
+     baseProfile="full"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:x="http://www.w3.org/1999/xlink"
+     xmlns:ev="http://www.w3.org/2001/xml-events"
+	 width="{{width}}"
+	 height="{{height}}"
+	 viewBox="0 0 1000 1000">
+
+	 <style>
+	 	g.square.black {
+			fill: #d18b47;
+		}
+
+		g.square.white {
+			fill: #ffce9e;
+		}
+
+		g.square[highlight=true] {
+			fill: #8888ff !important;
+		}
+
+		g.square.white[highlight=true] {
+			fill-opacity: .3;
+		}
+
+		g.square.black[highlight=true] {
+		}
+
+		g#ranks, g#files {
+			color: #000000;
+			font-size: 55px;
+		}
+
+		symbol#black-queen image {
+			border: solid 2px #ffffff;
+		}
+
+		circle#move-placeholder {
+			fill: #000 !important;
+		}
+
+	 </style>
+
+	 <defs>
+
+	   <symbol id="black-queen">
+	     <image x:href="/pieces/black/queen.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="black-king">
+	     <image x:href="/pieces/black/king.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="black-rook">
+	     <image x:href="/pieces/black/rook.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="black-bishop">
+	     <image x:href="/pieces/black/bishop.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="black-knight">
+	     <image x:href="/pieces/black/knight.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="black-pawn">
+	     <image x:href="/pieces/black/pawn.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="white-queen">
+	     <image x:href="/pieces/white/queen.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="white-king">
+	     <image x:href="/pieces/white/king.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="white-rook">
+	     <image x:href="/pieces/white/rook.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="white-bishop">
+	     <image x:href="/pieces/white/bishop.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="white-knight">
+	     <image x:href="/pieces/white/knight.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <symbol id="white-pawn">
+	     <image x:href="/pieces/white/pawn.svg" x="6" y="6" width="45" height="45" transform="scale(1.7)" />
+	   </symbol>
+
+	   <circle id="move-placeholder" class="move-placeholder" cx="50" cy="50"  r="5" />
+
+	   <g id="capture-placeholder" class="capture-placeholder" transform="rotate(45deg)">
+	     <line x1="-2.5" y1="0" x2="2.5" y2="0" stroke="red" stroke-width="2" />
+		 <line x1="0" y1="-2.5" x2="0" y2="2.5" stroke="red" stroke-width="2" />
+	   </g>
+	   
+	   
+
+	   <filter id="shad">
+	     <feOffset result="offOut" in="SourceAlpha" dx="0" dy="0"/>
+		 <feComponentTransfer>
+		   <feFuncR type="table" tableValues="1 0"/>
+		   <feFuncG type="table" tableValues="1 0"/>
+		   <feFuncB type="table" tableValues="1 0"/>
+	     </feComponentTransfer> 
+		 <feGaussianBlur result = "blurOut" in = "offOut" stdDeviation = "5"/>
+         <feBlend in = "SourceGraphic" in2 = "blurOut" mode = "normal"/>
+       </filter>
+
+	 </defs>
+
+	 <g id="board" transform="translate(100, 100)">
+	 	{{#squares}}
+		<g id="{{id}}" class="square {{color}}" transform="translate({{tx}}, {{ty}})">
+			<rect width="10%" height="10%" />
+			{{#piece}}<use x:href="#{{color}}-{{type}}" />{{/piece}}
+		</g>
+		{{/squares}}
+	 </g>
+
+	 <g id="ranks" transform="translate(50, 168)">
+	 	{{#ranks}}<text x="0" y="{{y}}">{{rank}}</text>{{/ranks}}
+	 </g>
+
+	 <use x:href="#ranks" transform="translate(873, 0)" />
+
+
+	 <g id="files" transform="translate(140, 80)">
+	 	{{#files}}<text x="{{x}}" y="0">{{file}}</text>{{/files}}
+	 </g>
+
+	 <use x:href="#files" transform="translate(0, 880)" />
+
+</svg>
+

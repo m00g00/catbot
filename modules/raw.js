@@ -10,6 +10,7 @@ mod.on('PING', onPing);
 mod.on(433, onInUseNick);
 mod.on(376, onMotdEnd);*/
 
+var irc = mod.irc;
 
 
 var IRCMessage = {
@@ -154,7 +155,7 @@ var IRCMessage = {
 	},
 
 	get text() {
-		return this.params.last;
+		return this.params ? this.params.last : undefined;
 		//return this.params.length ? this.params.last : null;
 		//return this.trailing ? this.trailing : null;
 	},
@@ -167,7 +168,7 @@ var IRCMessage = {
 	},
 
 	get args() {
-		return typeof this.params.last == 'string' ? this.params.last.split(' ') : [];
+		return typeof this.params == 'undefined' ? undefined : typeof this.params.last == 'string' ? this.params.last.split(' ') : [];
 	},
 
 	get from() {
@@ -175,10 +176,12 @@ var IRCMessage = {
 	},
 
 	get to() {
-		return this.params[0];
+		return this.params ? this.params[0] : undefined;
 	},
 
 	get query() {
+		if (typeof this.text == 'undefined') return undefined;
+
 		if (!this._query) {
 				var qobj = {};
 				var qparts = this.text.splitFirstWord();
@@ -193,19 +196,19 @@ var IRCMessage = {
 	},
 
 	get qcmd() {
-		return this.query.command;
+		return this.query ? this.query.command : undefined;
 	},
 
 	get qtxt() {
-		return this.query.text;
+		return this.query ? this.query.text : undefined;
 	},
 
 	get qarg() {
-		return this.query.args;
+		return this.query ? this.query.args : undefined;
 	},
 
 	get channel() {
-		return this.params[0] && this.params[0][0] == '#' ? this.params[0] : null;
+		return typeof this.params == 'undefined' ? undefined : this.params[0] && this.params[0][0] == '#' ? this.params[0] : null;
 	},
 
 	toJSON: function() {
@@ -285,7 +288,6 @@ var parse = function(line, direction) {
 	return message;
 };
 
-var irc = mod.irc;
 
 //IRC helper functions
 var queue = [];
@@ -336,7 +338,7 @@ queue.run = function(slow) {
 
 
 function put(message) {
-	irc.write(message.toString() + '\r\n');
+	irc.write(message.toString().replace(/[\r\n]/g, '') + '\r\n');
 	emitLine(message);
 }
 
@@ -446,6 +448,13 @@ transmorgrify({
 
 //Transform exported functions to irc common
 com.meld(exports);
+
+irc.quit = function(msg) {
+	com.quit(msg || irc.conf.quit_msg);
+}
+
+irc.privmsg = com.privmsg;
+
 
 var privmsg = exports.privmsg;
 
@@ -568,6 +577,24 @@ function ondata(data) {
 
 irc.on('data', ondata);
 
+
+function cutelog(msg) {
+	p = [ color.bold.green + msg.command ];
+
+	if (msg.command == 'QUIT' || msg.command == 'NICK') p.push(mod.irc.getServerName());
+	else if (msg.toMe()) p.push(color.bold.white + mod.irc.state.nick);
+	else if (msg.channel) p.push(color.white + msg.channel.replace(/^#+/, color.yellow + '$&' + color.reset + color.cyan));
+
+	if (msg.nick) p.push(color.bold.white + msg.nick + color.yellow + ':');
+	else if (msg.direction == 'outgoing')
+		p.push(color.bold.white + mod.irc.state.nick + color.red + ':');
+
+	p.push(msg.text + color.reset);
+
+	return p.join(color.reset + ' ');
+}
+
+
 function emitLine(line) {
 
 	var message = typeof line == 'string' ? parse(line) : line;
@@ -577,13 +604,23 @@ function emitLine(line) {
 	}
 
 	if ((message.command != "PING" && message.command != "PONG") || global.share.log_pingpong == true) 
-		log(
-			(servers.numProperties() > 1 ? color.grey + mod.irc.getId()[0] + color.reset + '': '') +
-			(message.direction == 'outgoing' ? 
-				color.red + '< ' : color.yellow + '> ') + 
-			color.reset + 
-			message.toString(true)
-		);
+		if (share.log_short && /PRIVMSG|QUIT|JOIN|PART/.test(message.command)) 
+			log(cutelog(message));
+			/*log(('{g}{channel}{r} ' + 
+			(message.direction == 'outgoing' ? '{Y}<{w}{self}{Y}>{r} ' : message.nick ? '{y}<{c}{nick}{y}>{r} ' : '') +
+			'{text}{r}').fo(
+						{ y: color.yellow, Y: color.bold.red, g: color.bold.green, w: color.bold.white, self: mod.irc.state.nick,
+						  c: color.bold.cyan, r: color.reset, b: color.blue,
+						  channel: message.channel, nick: message.nick, 
+						  text: message.text }));*/
+		else 
+			log(
+				(servers.numProperties() > 1 ? color.grey + mod.irc.getId()[0] + color.reset + '': '') +
+				(message.direction == 'outgoing' ? 
+					color.red + '< ' : color.yellow + '> ') + 
+				color.reset + 
+				message.toString(true)
+			);
 
 	mod.emitAll('RAW', message);
 

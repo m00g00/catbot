@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{{title}}</title>
+
+<style>
+iframe { 
+    border: none;
+}
+</style>
+
+<script src="/chess.js"></script>
+<script>
+    void function() {
+
+    function g(x) { return document.querySelectorAll(x) }
+    function id(x) { return document.getElementById(x) }
+
+    game = new Chess();
+    game.load_pgn("{{pgn}}");
+    game.current_moves = game.moves({verbose:1});
+
+    game.movesAt = function(id) {
+        return game.current_moves.filter(function(m){ return m.from == id });
+    };
+            
+
+    document.onreadystatechange = function() {
+        console.log(document.readyState);
+        if (document.readyState == 'complete') {
+            var info = id('info'),
+                board = id('board'),
+                doc = board.contentDocument,
+                bid = function(x) { return board.contentDocument.getElementById(x) },
+                inb = bid('board');
+
+                inb.addEventListener('mouseover', function(e) {
+                    var square = e.target.parentNode;
+                    game.movesAt(square.id).forEach(function(m) { 
+                        console.log(m);
+
+                        var psquare = bid(m.to);
+                        if (!psquare.placeholder) {
+                            var use = doc.createElementNS("http://www.w3.org/2000/svg", 'use');
+                            use.setAttributeNS("http://www.w3.org/1999/xlink", 'href', '#move-placeholder');
+                            psquare.appendChild(use);
+                            psquare.placeholder = use;
+
+                            /*var ph = doc.createElementNS("http://www.w3.org/2000/svg", 'circle');
+                            psquare.placeholder = ph;
+                            ph.setAttribute('cx', 2);
+                            ph.setAttribute('cy', 2);
+                            ph.setAttribute('r', 20);
+                            ph.setAttribute('fill', '#000000');
+                            psquare.appendChild(ph);*/
+                            //psquare.setAttribute('highlight', 'true');
+                        }
+                    });
+                }, false);
+
+                inb.addEventListener('mouseout', function(e) {
+                    game.movesAt(e.target.parentNode.id).forEach(function(m) { 
+                        var psquare = bid(m.to);
+                        if (psquare.placeholder) {
+                            psquare.removeChild(psquare.placeholder);
+                            psquare.placeholder = null;
+                        }
+                        //psquare.removeAttribute('highlight');
+                    });
+                }, false);
+
+            info.innerHTML = game.pgn();
+
+
+        }
+    };
+
+    }();
+</script>
+</head>
+<body>
+<iframe id="board" height="700" width="700" src="/chess/{{name}}/svg"></iframe>
+<div id="info"></div>
+</body>
+</html>

@@ -3,32 +3,36 @@ mod.on('!pi', pi);
 mod.on('!commands', listcommands);
 mod.on('!math', math);
 mod.on('!spell', spell);
-mod.on(['.js', '..'], js);
-mod.on(['.jsreset', '.jsr'], force_resetcontext);
+//mod.on(['.js', '..'], js);
+//mod.on(['.jsreset', '.jsr'], force_resetcontext);
 ['!rock', '!paper', '!scissors'].forEach(function(e) {
 	mod.on(e, rps);
 });
-mod.on('.peen', function(msg){
+
+exports.peen = function(msg) {
 	var r=function(c,m){return Array(~~(Math.random()*m)).join(c)}; 
-	msg.respond(r('#',4)+'8'+r('=',30)+'D'+r('~',10)); 
+	return r('#',4)+'8'+r('=',30)+'D'+r('~',10)
+}
+mod.on('.peen', function(msg) {
+	msg.respond(exports.peen());
 });
-mod.on('.kafc', function(msg) {
+/*mod.on('.kafc', function(msg) {
 	msg.respond(kaffine_compile(msg.query.text).trim());
-});
-mod.on('.kafr', function(msg) {
+});*/
+/*mod.on('.kafr', function(msg) {
 	var code = kaffine_compile(msg.query.text).trim();
 	var clone = msg.clone();
 	clone.query.text = code;
 	js(clone);
-});
+});*/
 
-mod.on('.perf', function(msg) {
+/*mod.on('.perf', function(msg) {
 	var nmsg = msg.clone();
 
-	nmsg.text = '.pref var i = 999999; console.time(); while (--i) { ' + msg.query.text + '}; console.timeEnd()';
+	nmsg.text = '.pref var __i = 999999; console.time(); while (--__i) { ' + msg.query.text + '}; console.timeEnd()';
 
 	js(nmsg);
-});
+});*/
 
 mod.on('!uptime', function(message) {
 	var now = new Date,
@@ -67,6 +71,66 @@ mod.on('!uptime', function(message) {
 	);
 });
 
+var Chess = {
+	colors: {
+		w: 7,
+		b: 8,
+		piece: 1
+	},
+	empty: '-',
+	codestart: 0x2654,
+	generatePieces: function() {
+		Chess.pieces = { white: {}, black: {} };
+		['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'].each(function(n,i,a) {
+			var w = String.fromCharCode(Chess.codestart+i)+n[0], b = String.fromCharCode(Chess.codestart+a.length+i)+n[0];
+			Chess.pieces.white[n] = w; 
+			Chess.pieces.black[n] = b;
+			Chess.pieces[n] = { white: w, black: b };
+		});
+	},
+
+	makeBoard: function() {
+		var board = [], colors = ['w', 'b', 'w'], color, side, piece, r, c, row,
+			setup = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+		for (r=0; r<8; r++) {
+			board[r] = [];
+			for (c=0; c<8; c++) {
+				color = colors[r % 2 == 0 ? c % 2 : (c+1) % 2];
+				side = r > 3 ? 'white' : 'black';
+				piece = r == 0 || r == 7 ? Chess.pieces[side][setup[c]] : r == 1 || r == 6 ? Chess.pieces[side].pawn : Chess.empty;
+
+				board[r][c] = '\x03' + (piece == Chess.empty ? Chess.colors[color] : Chess.colors.piece) + ',' + Chess.colors[color] + piece;
+			}
+		}
+
+		return board;
+	},
+
+
+	
+
+};
+
+Chess.generatePieces();
+
+exports.Chess = Chess;
+
+
+
+mod.on('.oldchess', function(msg) {
+	var board = Chess.makeBoard();
+
+	board.each(function(r) {
+		var line = r.map(function(e) { return e + (e[e.length-1] == Chess.empty ? ' ' : '') }).join(''); //r.map(function(e) { var colors = e.match(/^\x03(\d{1,2}),(\d{1,2})/); return e + ' '; /*return e + '\x03' + colors[2] + ',' + colors[2] + '-'*/ }).join('');
+		console.log(JSON.stringify(line));
+		msg.respond(line);
+	});
+});
+			
+/*mod.on('.chess', function(msg) {
+	var resp = */
+
+
 
 
 /*mod.on('.php', function(
@@ -77,6 +141,8 @@ mod.on('!give', function(msg) {
 	var p = /^\s*([^\s]+)\s+(?:([\+-]?\d+)\s+)?(.*)\s*/(msg.query.text);
 
 	if (!p) { msg.respond("Give what to who now?"); return; }
+
+	var meta = require('./lib/meta');
 
 	var nick = p[1], num = !isNaN(p[2]) ? +p[2] : 1, item = p[3];
 
@@ -91,10 +157,58 @@ mod.on('!give', function(msg) {
 	});
 });
 
+/*function extractDateTime(from) {
+	var times = [], tn = 0, s = 0, p;
+	if (typeof from == 'string') from = from.split(/\s+/);
 
 
+	while (from.length && s < from.length) {
+		console.log(from.join(' '));
+		p = from.length;
 
+		while (!+(times[tn] = new Date(from.slice(s, --p).join(' '))) && p) {}
 
+		console.log(s, p);
+		if (p) { from.splice(s, p); tn++ }
+		else s++;
+
+	}
+
+	return [times, from];
+}*/
+
+mod.on('!alarm', function(msg) {
+	var time, message, qargs = msg.qarg, p = qargs.length;
+
+	while (!+(time = new Date(qargs.slice(0, --p).join(' '))) && p) {}
+
+	if (!p) { 
+		msg.respond("Invalid Date");
+		return;
+	} else if (time <= Date.now()) {
+		msg.respond("Date has already passed...");
+		return;
+	}
+
+	var meta = require('./lib/meta');
+	var key = time.toLocaleString();
+	message = qargs.slice(p).join(' ');
+
+	meta.get({ type: 'nick', name: msg.nick, server: mod.irc.getServerName(), channel: msg.channel, key: 'alarms' }, function(obj) {
+		obj['alarms'] = { time: time, message: message };
+		meta.update(obj);
+		
+		msg.respond("Alarm set for " + key)
+	});
+
+});
+
+mod.on('!alarms', function(msg) {
+	require('./lib/meta').get({ type: 'nick', name: msg.nick, server: mod.irc.getServerName(), channel: msg.channel }, function(obj) {
+		dump(obj);
+		msg.respond(obj.time + ': ' + obj.message);
+	});
+});
 
 function spell(message) {
 	var spawn = require('child_process').spawn,
@@ -137,23 +251,25 @@ function pi(message) {
 	message.respond(Math.PI);
 }
 
-var kaffine = require('kaffeine');
+//var kaffine = require('kaffeine');
 
 function kaffine_compile(code) {
 	return kaffine.fn.compile(code);
 }
 
-var jsctx = {};
+var jsctx = {}, jshist = {};
 function spawncontext(message) {
 		var msgs = [],
-			getmsg = function() { return msgs.shift(); },
+			getmsg = function() { 
+				return msgs.length ? msgs.shift() : message
+			},
 			child = require('./lib/fork').fork(function() {
 			var vm = require('vm'),
 				util = require('util'),
+				markup = require('./markup'),
 				//inspect = util.inspect,
 				inspect = require('./eyes').inspector({ 
-					styles: { 
-					},
+					styles: false,
 					pretty: false, 
 					stream: null,
 					maxLength: 200
@@ -162,6 +278,7 @@ function spawncontext(message) {
 				times = [];
 				//bf = require('node-brainfuck'),
 				context = {
+					markup: markup,
 					console: {
 						log: function(obj) {
 							process.postMessage(inspect(obj));
@@ -187,6 +304,8 @@ function spawncontext(message) {
 					print: function(obj) {
 						process.postMessage(inspect(obj));
 					},
+
+					//markup: require('./lib/markup')
 
 					//bf: bf,
 
@@ -215,11 +334,12 @@ function spawncontext(message) {
 			if (ping && m == "#PONG") {
 				ping = false;
 			} else if (m == '#DONE') {
-				console.log(buffer);
+
 				getmsg().respond(buffer.map(function(b) {
 					return (b.length > 200 ? b.substr(0, 200) + '\x0f ...' : b).replace(/\n/g, '\\n');
 				}).join('; '));
 				buffer.length = 0;
+
 			} else {
 				buffer.push(m);
 				/*m = m.replace(/\n/g, '');
@@ -250,7 +370,7 @@ function spawncontext(message) {
 							resetcontext(getmsg());
 						}
 					}, 500);
-				}, 5000);
+				}, 10000);
 			}
 		};
 
@@ -274,40 +394,19 @@ function resetcontext(message) {
 }
 
 exports.ctx = jsctx;
+exports.hist = jshist;
 
 function js(message) {
 	if (!message.query.text.trim()) return;
 	var ctxname = message.channel ? message.channel : message.from;
 
-	var ctx = jsctx[ctxname] || (jsctx[ctxname] = spawncontext(message));
+	var ctx = jsctx[ctxname] || (jsctx[ctxname] = spawncontext(message)),
+		hist = jshist[ctxname] || (jshist[ctxname] = []);
 
 	ctx.post(message);
+	hist.push(message.query.text);
+
 }
-
-
-
-
-
-
-	/*var str = message.query.text, vm = require('vm');
-
-	if (true || !jschild) {
-		jschild = require('child_process').spawn('node');
-			jschild.stdout.on('data', function(data) {
-				console.log('DD');
-				message.respond(data);
-			});
-		jschild.stderr.on('data', function(data) {
-				console.log('EE');
-			message.respond(data);
-		});
-	}
-
-	jschild.stdin.end('console.log('+str+');' + '\n');*/
-
-//}
-
-
 
 function math(message) {
 	var eq = message.query.text;
@@ -360,3 +459,63 @@ function listcommands(message) {
 function rps(message) {
 	message.respond(['rock', 'paper', 'scissors'][~~(Math.random()*3)]);
 }
+
+void function() {
+	function flip() {
+	 var result = flipString(document.f.original.value.toLowerCase());
+	 document.f.flipped.value = result;
+	}
+
+	function flipString(aString) {
+	 var last = aString.length - 1;
+	 //Thanks to Brook Monroe for the suggestion to use Array.join
+	 var result = new Array(aString.length)
+	 for (var i = last; i >= 0; --i) {
+	  var c = aString.charAt(i)
+	  var r = flipTable[c]
+	  result[last - i] = r ? r : c
+	 }
+	 return result.join('')
+	}
+
+	var flipTable = {
+	a : '\u0250',
+	b : 'q',
+	c : '\u0254', //open o -- from pne
+	d : 'p',
+	e : '\u01DD',
+	f : '\u025F', //from pne
+	g : '\u0183',
+	h : '\u0265',
+	i : '\u0131', //from pne
+	j : '\u027E',
+	k : '\u029E',
+	//l : '\u0283',
+	m : '\u026F',
+	n : 'u',
+	r : '\u0279',
+	t : '\u0287',
+	v : '\u028C',
+	w : '\u028D',
+	y : '\u028E',
+	'.' : '\u02D9',
+	'[' : ']',
+	'(' : ')',
+	'{' : '}',
+	'?' : '\u00BF', //from pne
+	'!' : '\u00A1',
+	"\'" : ',',
+	'<' : '>',
+	'_' : '\u203E',
+	'\u203F' : '\u2040',
+	'\u2045' : '\u2046',
+	'\u2234' : '\u2235',
+	'\r' : '\n' //thank you, Yeeliberto
+	}
+
+	for (i in flipTable) {
+	  flipTable[flipTable[i]] = i
+	}
+
+	mod.on('.flip', function(msg) { msg.respond(flipString(msg.query.text)) });
+}();
