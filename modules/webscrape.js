@@ -14,142 +14,9 @@ mod.on('!gstats', gstats);
 mod.on('!bnet', bnet);
 mod.on('!scrape', cmdscrape);
 
+mod.on('!npm', npm);
+
 mod.on('!mdn', function(msg) { goog(msg.query.text + ' site:developer.mozilla.org', msg.respond.bind(msg)) });
-
-/*mod.on('!auth', function(msg) {
-	var digest = require('./lib/digest'),
-		user = "wpdev", pass = "p@ss4d3v";
-		method = 'GET', host = 'dev.wellplayed.org', path = '/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871';
-
-	digest.request(user, pass, { 
-		host: host, port: 80, path: path, method: method,
-		headers: { Host: host, 'User-Agent': 'Mozilla/5.0' }
-	}, function(res) {
-		res.setEncoding('utf8');
-		var buffer = '';
-		res.on('data', function(chunk) {
-			buffer += chunk;
-		});
-		res.on('end', function() {
-			//var obj = JSON.parse(buffer);
-			//print_r(obj);
-			//with(obj) msg.respond(JSON.stringify(eval(msg.query.text)));
-
-			msg.respond(buffer.slice(0,200));
-		});
-		res.on('error', function(er) { console.log('error: ' + er) });
-	});
-});*/
-/*mod.on('!auth', function(msg) {
-	var http = require('http')
-	var client = http.createClient(80, host);
-
-	client.request(method, path, {
-		'Host': 'dev.wellplayed.org',
-		'User-Agent': 'Mozilla/5.0'
-	}).on('response', function(res) {
-			print_r(res.headers); print_r(res.statusCode);
-		if (res.statusCode == 401) {
-			print_r(client);
-			console.log('hai');
-			var authdata = {}, authquotes = {}, authreg = /(\w+)="?([^",]+)"?/g, x;
-			while(x=authreg.exec(res.headers['www-authenticate'])) {
-				authdata[x[1]] = x[2];
-				if (x[0].indexOf('"') != -1) authquotes[x[1]] = true;
-			}
-			//authdata.qop = 'auth';
-			print_r(authdata);
-			var crypt = require('crypto'), ha1 = crypt.createHash('md5'),
-			    ha2 = crypt.createHash('md5'), response = crypt.createHash('md5'), cnonce = crypt.createHash('md5');
-
-			//authdata.nonce = "exnlYc6mBAA=fa0775c543c3f5a03b5697484f7cc4b394304cf4"
-
-		    cnonce.update(Math.random().toString().slice(2));
-
-			authdata.nc = '00000001'
-			authdata.cnonce = cnonce.digest('hex').slice(0,16);
-			authquotes.cnonce = true;
-			//authdata.cnonce = "c822c727a648aba7";
-
-			ha1.update([user, authdata.realm, pass].join(':'));
-			ha2.update([method, path].join(':'));
-			response.update(
-			  [ha1.digest('hex'), authdata.nonce, authdata.nc, authdata.cnonce, authdata.qop, ha2.digest('hex')].join(':')
-			);*/
-
-			/*response.update([user, authdata.realm, pass].join(':'));
-			response.update([authdata.nonce, authdata.nc, authdata.cnonce, authdata.qop].join(':'));
-			response.update([method, path].join(':'));*/
-
-			//var order = ['username', 'realm', 'nonce', 'uri', 'algorithm', 'response', 'qop', 'nc', 'cnonce', 'opaque'];
-
-/*
-			var final = response.digest('hex');
-			print_r(authdata)
-			console.log(final);
-			authdata.response = final;
-			authdata.username = user;
-			authdata.uri = path;
-			authquotes.uri = true;
-			authquotes.username = true;
-			authquotes.response = true;
-			authquotes.qop = false;
-			var fheaders = {
-				'Host': host,
-				'User-Agent': 'Mozilla/5.0',
-				'Authorization': 'Digest ' + //order.filter(function(k) { return k in authdata })
-				                      Object.keys(authdata).map(function(k) {
-					var q = true ? '"' : '';
-					return k + '=' + q + authdata[k] + q;
-				}).join(', ')
-			}
-			print_r(fheaders);
-
-			//var req2 = http.createClient(80, host);
-			http.request({ host: host, port: 80, path: path, method: 'GET', headers: fheaders },
-			function(res) {
-				console.log('status ' + res.statusCode);
-				print_r(res.headers);
-				res.setEncoding('utf8');
-				var buffer = '';
-				res.on('data', function(chunk) {
-					buffer += chunk;
-				});
-				res.on('end', function() {
-					//var obj = JSON.parse(buffer);
-					//print_r(obj);
-					//with(obj) msg.respond(JSON.stringify(eval(msg.query.text)));
-
-					msg.respond(buffer.slice(0,200));
-				});
-				res.on('error', function(er) { console.log('error: ' + er) });
-			}).end();
-		}
-	}).end();*/
-
-
-
-
-
-	/*var req = client.request('GET', '/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871', {
-		'Host': 'dev.wellplayed.org',
-		'User-Agent': 'Mozilla/5.0',
-		'Authorization': 'Digest username="wpdev", realm="dev", nonce="momFNsumBAA=e79aec4cb44b77ce1d1039a72a14ffda4621aba9", uri="/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871", algorithm=MD5, response="5b21375dc51544784f1cf2a9fe743174", qop=auth, nc=00000001, cnonce="082c875dcb2ca740"'
-		
-	});*/
-
-
-
-
-//});
-//mod.on('!ud', ud);
-
-/*function ud(message, random) {
-	ifl(message.qtxt, 'http://www.urbandictionary.com', function(doc, body, response) {
-		var items = doc.find('//table[@id="entries"]//td[@class="index"]/../following-sibling::tr[1]/td[@class="text"]');
-
-		ite 
-*/
 
 function gstats(message) {
 	scrape('http://www.google.com/search?q=' + escape(message.query.text), function(doc, body, response) {
@@ -197,13 +64,14 @@ function goog(query, resp) {
 	scrape('http://www.google.com/search?q=' + escape(query), function(doc, body, response) {
 		var ls = doc.find('//li[not(@id)]//h3/a');
 
-		var msg = ''
-		for (var i=0; i < ls.length && i < ln; i++) {
-			var l = ls[i];
-			msg += unescape(l.text()) + ' @ ' + l.attr('href').value() + (i < ln-1 ? '  ' : '')
-		}
+		var msg = [], i=0;
+		ls.some(function(l) {
+			if (i >= ln) return true;
+			i++
+			msg.push(unescape(l.text()) + ' @ ' + l.attr('href').value())
+		});
 
-		resp(msg);
+		resp(msg.join(' -- '));
 	});
 }
 
@@ -216,6 +84,7 @@ function wikipedia(message) {
 		scrape(url, function(doc, body, resp) {
 
 			var par = doc.get('/html/body/p');
+			dump(par);
 
 			par.find('span | sup').forEach(function(e) {
 				e.remove();
@@ -395,7 +264,6 @@ function imquote(message) {
 
 function ifl(query, site, callback, nofollow) {
 	var uri = 'http://www.google.com/search?q=' + escape(query + ' site:' + site) + '&btnI';
-	console.log(uri);
 
 	if (nofollow) get(uri, callback, true);
 	else scrape(uri, function(doc, body, request) {
@@ -410,6 +278,98 @@ function ifl(query, site, callback, nofollow) {
 			callback(doc, body, request);
 		}
 	});
+}
+
+function npm(message) {
+	var query = escape(message.query.text.trim());
+
+	if (!query) {
+		message.respond("What package do you want to search for?");
+		return;
+	}
+
+
+	var resp = function(info) {
+		var robj = {};
+
+		robj.name = info.name;
+		robj.description = info.description || info['dist-tags'].latest;
+
+		if (info.name) robj.name = info.name;
+		//if (info.description) robj.description = info.description;
+		if (info.author) robj.author = info.author.name;
+		else if (info.maintainers && info.maintainers.length) 
+			robj.maintainer = info.maintainers[0].name;
+
+		if (info.repository) robj.repo = info.repository.url;
+		else if (info['dist-tags'] && info['dist-tags'].latest && info.versions) {
+			var ver = info.versions[info['dist-tags'].latest]
+			if (ver && ver.repositories && ver.repositories.length)
+				robj.repo = ver.repositories[0].url
+		}
+
+
+		var msg = Object.keys(robj).filter(function(k) { return k != 'name' && k != 'description' })
+								   .map(function(k) { return k.capitalize() + ': ' + robj[k] })
+								   .join(', ');
+
+		
+		message.respond(robj.name + ': ' + robj.description + ' -- ' + msg);
+	};
+
+	var search = function() {
+		var uri = 'http://search.npmjs.org/_list/search/search?startkey=%22'+query+'%22&endkey=%22'+query+'%22&limit=25';
+
+		get(uri, function(data) {
+			var obj = JSON.parse(data);
+
+			if (!obj.rows || !obj.rows.length) {
+				var uri = 'http://search.npmjs.org/_view/author?reduce=false&include_docs=true&key=%22' + query + '%22';
+				get(uri, function(data) {
+					var obj = JSON.parse(data);
+					dump(obj);
+
+					if (obj.rows && obj.rows.length) {
+						message.respond('Packages by ' + obj.rows[0].key + ': ' + obj.rows.map(function(r) { return r.id }).join(', '));
+						return;
+					} else {
+						message.respond("Nothing found");
+						return;
+					}
+				});
+			} else if (obj.rows.length > 1) {
+				message.respond(obj.rows.map(function(r) { return r.key }).join(', '));
+				return;
+			} else {
+				resp(obj.rows[0].value);
+				return;
+			}
+
+		});
+	};
+
+	var package = function() {
+
+		var uri = 'http://search.npmjs.org/api/' + query;
+
+		get(uri, function(data) {
+			var obj = JSON.parse(data);
+
+			if (obj && obj.name == query) {
+				resp(obj);
+				return;
+			} else {
+				search();
+			}
+		});
+	};
+
+	if (message.query.args[0].toLowerCase() == 'search') {
+		query = message.query.args.slice(1).join(' ');
+		search();
+	} else {
+		package();
+	}
 }
 
 function bnet(message) {
@@ -466,4 +426,139 @@ function bnet(message) {
 
 		
 }
+
+/*mod.on('!auth', function(msg) {
+	var digest = require('./lib/digest'),
+		user = "wpdev", pass = "p@ss4d3v";
+		method = 'GET', host = 'dev.wellplayed.org', path = '/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871';
+
+	digest.request(user, pass, { 
+		host: host, port: 80, path: path, method: method,
+		headers: { Host: host, 'User-Agent': 'Mozilla/5.0' }
+	}, function(res) {
+		res.setEncoding('utf8');
+		var buffer = '';
+		res.on('data', function(chunk) {
+			buffer += chunk;
+		});
+		res.on('end', function() {
+			//var obj = JSON.parse(buffer);
+			//print_r(obj);
+			//with(obj) msg.respond(JSON.stringify(eval(msg.query.text)));
+
+			msg.respond(buffer.slice(0,200));
+		});
+		res.on('error', function(er) { console.log('error: ' + er) });
+	});
+});*/
+/*mod.on('!auth', function(msg) {
+	var http = require('http')
+	var client = http.createClient(80, host);
+
+	client.request(method, path, {
+		'Host': 'dev.wellplayed.org',
+		'User-Agent': 'Mozilla/5.0'
+	}).on('response', function(res) {
+			print_r(res.headers); print_r(res.statusCode);
+		if (res.statusCode == 401) {
+			print_r(client);
+			console.log('hai');
+			var authdata = {}, authquotes = {}, authreg = /(\w+)="?([^",]+)"?/g, x;
+			while(x=authreg.exec(res.headers['www-authenticate'])) {
+				authdata[x[1]] = x[2];
+				if (x[0].indexOf('"') != -1) authquotes[x[1]] = true;
+			}
+			//authdata.qop = 'auth';
+			print_r(authdata);
+			var crypt = require('crypto'), ha1 = crypt.createHash('md5'),
+			    ha2 = crypt.createHash('md5'), response = crypt.createHash('md5'), cnonce = crypt.createHash('md5');
+
+			//authdata.nonce = "exnlYc6mBAA=fa0775c543c3f5a03b5697484f7cc4b394304cf4"
+
+		    cnonce.update(Math.random().toString().slice(2));
+
+			authdata.nc = '00000001'
+			authdata.cnonce = cnonce.digest('hex').slice(0,16);
+			authquotes.cnonce = true;
+			//authdata.cnonce = "c822c727a648aba7";
+
+			ha1.update([user, authdata.realm, pass].join(':'));
+			ha2.update([method, path].join(':'));
+			response.update(
+			  [ha1.digest('hex'), authdata.nonce, authdata.nc, authdata.cnonce, authdata.qop, ha2.digest('hex')].join(':')
+			);*/
+
+			/*response.update([user, authdata.realm, pass].join(':'));
+			response.update([authdata.nonce, authdata.nc, authdata.cnonce, authdata.qop].join(':'));
+			response.update([method, path].join(':'));*/
+
+			//var order = ['username', 'realm', 'nonce', 'uri', 'algorithm', 'response', 'qop', 'nc', 'cnonce', 'opaque'];
+
+/*
+			var final = response.digest('hex');
+			print_r(authdata)
+			console.log(final);
+			authdata.response = final;
+			authdata.username = user;
+			authdata.uri = path;
+			authquotes.uri = true;
+			authquotes.username = true;
+			authquotes.response = true;
+			authquotes.qop = false;
+			var fheaders = {
+				'Host': host,
+				'User-Agent': 'Mozilla/5.0',
+				'Authorization': 'Digest ' + //order.filter(function(k) { return k in authdata })
+				                      Object.keys(authdata).map(function(k) {
+					var q = true ? '"' : '';
+					return k + '=' + q + authdata[k] + q;
+				}).join(', ')
+			}
+			print_r(fheaders);
+
+			//var req2 = http.createClient(80, host);
+			http.request({ host: host, port: 80, path: path, method: 'GET', headers: fheaders },
+			function(res) {
+				console.log('status ' + res.statusCode);
+				print_r(res.headers);
+				res.setEncoding('utf8');
+				var buffer = '';
+				res.on('data', function(chunk) {
+					buffer += chunk;
+				});
+				res.on('end', function() {
+					//var obj = JSON.parse(buffer);
+					//print_r(obj);
+					//with(obj) msg.respond(JSON.stringify(eval(msg.query.text)));
+
+					msg.respond(buffer.slice(0,200));
+				});
+				res.on('error', function(er) { console.log('error: ' + er) });
+			}).end();
+		}
+	}).end();*/
+
+
+
+
+
+	/*var req = client.request('GET', '/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871', {
+		'Host': 'dev.wellplayed.org',
+		'User-Agent': 'Mozilla/5.0',
+		'Authorization': 'Digest username="wpdev", realm="dev", nonce="momFNsumBAA=e79aec4cb44b77ce1d1039a72a14ffda4621aba9", uri="/api/channels/live.json?key=e45296d6343c13e75b4d2566028f5871", algorithm=MD5, response="5b21375dc51544784f1cf2a9fe743174", qop=auth, nc=00000001, cnonce="082c875dcb2ca740"'
+		
+	});*/
+
+
+
+
+//});
+//mod.on('!ud', ud);
+
+/*function ud(message, random) {
+	ifl(message.qtxt, 'http://www.urbandictionary.com', function(doc, body, response) {
+		var items = doc.find('//table[@id="entries"]//td[@class="index"]/../following-sibling::tr[1]/td[@class="text"]');
+
+		ite 
+*/
 

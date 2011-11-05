@@ -53,7 +53,30 @@ Object.newChild = function() {
 	return fchild;
 };
 
+Object.noenum = function(obj) {
+	for (var i in obj) if (obj.hasOwnProperty(i)) {
+		var desc = Object.getOwnPropertyDescriptor(obj, i);
+		desc.enumerable = false;
+		Object.defineProperty(obj, i, desc);
+	}
 
+	return obj;
+};
+
+Object.make = function(proto, props) {
+	var dprops = {};
+	if (props) for (var i in props) if (props.hasOwnProperty(i)) {
+		var desc = Object.getOwnPropertyDescriptor(props, i);
+		desc.enumerable = false;
+		desc.configurable = true;
+		desc.writeable = true;
+		dprops[i] = desc;
+	}
+
+
+
+	return Object.create(Object.noenum(proto), dprops);
+};
 
 
 var object = {
@@ -177,12 +200,16 @@ var array = {
 
 	set last(v) {
 		array.setLast(this, v);
-	}
+	},
 
 };
 
 function extendProto() {
 	Object.defineProperties(Array.prototype, {
+		each: { 
+			value: Array.prototype.forEach
+		},
+
 		getRandom: {
 			value: function() {
 				return this[this.getRandomIndex()];
@@ -209,6 +236,8 @@ function extendProto() {
 		}
 	});
 
+	Array.toArray = function(arg) { return Array.isArray(arg) ? arg : [arg] };
+
 	Object.defineProperties(String.prototype, {
 		startsWith: { 
 			value: function(str) {
@@ -225,6 +254,12 @@ function extendProto() {
 		capitalize: {
 			value: function() {
 				return this[0].toUpperCase() + this.substr(1);
+			}
+		},
+
+		eq: {
+			value: function(str) {
+				return this.toLowerCase() === (''+str).toLowerCase();
 			}
 		}
 	});
@@ -439,7 +474,7 @@ var stream = {
 
 var log = {
 	TIMESTAMP_MODE: 0, //0=no timestamp, 1=timestamp, 2=timestmap on change
-	TIMESTAMP_FORMAT: '%m/%d/%Y %H:%M:%S: ',
+	TIMESTAMP_FORMAT: '%H:%M:%S',
 
 	last_timestamp: null,
 
@@ -468,9 +503,9 @@ var log = {
 	},
 
 	getTimestamp: function() {
-		switch(log.TIMESTAMP_MODE) {
+		switch(typeof share.TIMESTAMP_MODE == 'number' ? share.TIMESTAMP_MODE : log.TIMESTAMP_MODE) {
 			case 0: return '';
-			case 1: return date.toLocaleFormat(new Date, log.TIMESTAMP_FORMAT);
+			case 1: return date.toLocaleFormat(new Date, share.TIMESTAMP_FORMAT || log.TIMESTAMP_FORMAT);
 			case 2: 
 				var d = new Date;
 				if (date.last_timestamp == null || d.toString() != date.last_timestamp.toString()) {
@@ -499,7 +534,7 @@ var log = {
 	},
 
 	putIRC: function(str) {
-		log.put(log.getTimestamp()+log.IRCSpecialChars(str));
+		log.put(log.getTimestamp() + ' ' + log.IRCSpecialChars(str));
 	},
 
 	formatColor: function(str, obj, colors) {

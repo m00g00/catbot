@@ -1,11 +1,10 @@
+//process.chdir(__dirname);
 var constants = {
-	USE_REPL: true
+	USE_REPL: true,
+	GLOBAL_CONF: './global.js',
+	PATH_ROOT: __dirname
 };
 global.constants = constants;
-
-global.share = {
-	process_start_time: new Date
-};
 
 var log = {};
 require('./helper').
@@ -15,6 +14,15 @@ require('./helper').
 	}).
 
 	extendAll();
+
+var sep = log.colors.yellow + ':' + log.colors.reset;
+global.share = {
+	process_start_time: new Date,
+	log_short: true,
+	TIMESTAMP_MODE: 1,
+	TIMESTAMP_FORMAT: '%H' + sep + '%M' + sep + '%S'
+};
+
 
 
 
@@ -28,7 +36,7 @@ global.var_dump = function(val) {
 
 process.on('uncaughtException', function(err) {
 	log.error("Uncaught Exception");
-	print_r(arguments);
+	console.log(err.stack);
 	//process.exit(1);
 });
 
@@ -46,7 +54,7 @@ process.once('SIGINT', function catcher() {
 
 		var closed = 0, num = servers.numProperties();
 		servers.forEach(function(server) {
-			server.on('close', function() {
+			server.on('end', function() {
 				this.destroy();
 
 				closed++;
@@ -57,7 +65,7 @@ process.once('SIGINT', function catcher() {
 				}
 			});
 
-			server.common.quit(server.conf.quit_msg)
+			server.quit();
 		});
 	});
 });
@@ -71,7 +79,10 @@ var irc = require('./irc');
 
 log.important('\nHAI I IN UR SERVER RUNNING UR BOTZ\n');
 
-//var Script = process.binding('evals').Script;
+var path = require('path');
+
+if (path.exists(constants.GLOBAL_CONF)) Script.runFileSyncInThisContext(constants.GLOBAL_CONF);
+
 var Script = require('./lib/scripter');
 var cfiles = process.argv.slice(2);
 var loadFile = function(file) {
@@ -98,6 +109,14 @@ if (constants.USE_REPL && !repl.context.irc) {
 	});
 
 	repl.context.loadFile = loadFile; 
+
+	repl.context.destroy = function(s) {
+		s.quit();
+		s.end();
+		s.destroy();
+		delete repl.context[s.conf.id];
+		delete global.servers[s.conf.id];
+	};
 
 	repl.context.watchModule = function(name) {
 		require('fs').watchFile('./modules/' + name + '.js', function(curr, prev) {
