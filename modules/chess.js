@@ -58,19 +58,31 @@ mod.on('.chess', function(msg) {
 });
 
 if (HTTP_SERVER) !function() {
-	var cserv = global.share.chess_server, app = require('route66')
+
+	var cserv = global.share.chess_server
 	if (!cserv) {
 		cserv = global.share.chess_server = connect(connect.logger('dev'), connect.static('modules/chess')); 
 
+		c
 		cserv.listen(HTTP_SERVER.port);
 	}
 
 	if (cserv.stack.length > 2) cserv.stack.pop();
 
-	cserv.use('/chess/*', function(req, res){
+	cserv.use('/chess', function(req, res){
 
-			var tokens = req.url.split('/')
-				
+			req.url.toLowerCase().split('/').reverse().filter(function(t){ return t != '' })
+			.map(function(t){ { output: [ 'index', 'svg' ],
+								orient: [ 'b', 'w' ] 
+								
+								
+								
+								b: 'orient', w: 'orient', 
+							    svg: 'output', 'index': 'output' }
+							{ b: function(){ orient = 'b' },
+								w: function(){ orient = 'w' },
+								svg: function(){ output = 'svg' },
+								index: function(){  output = 'index' }
 
 
 
