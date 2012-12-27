@@ -6,7 +6,6 @@ mod.on('!def', function(msg) { wiktionary(msg); });
 mod.on('!defr', function(msg) { wiktionary(msg, true); });
 mod.on('!wquote', wquote);
 mod.on('!imquote', imquote);
-mod.on('!nigger', niggerquote);
 mod.on('!w' , wikipedia);
 mod.on('!g', google);
 mod.on('!gcalc', gcalc);
@@ -140,33 +139,7 @@ function cmdscrape(message) {
 }
 
 
-function niggerquote(message) {
-	var base = 'http://www.stupidniggers.com/index.php?p=random';
 
-	scrape(base, function(doc, body, response) {
-		var quotes = doc.find('//td[contains(@class, "body")]');
-
-		var quote = quotes.getRandom();
-		var msg = quote.text().trim();
-
-		var name = quote.get('a/@href').text().match(/.*\/(.*)/)[1];
-		var img = quote.get('a/img/@src').text().match(/^(.*)_normal(.jpe?g)$/i);
-		if (img) img = img[1] + img[2];
-
-		var msgresp = function(name, msg, lnk) {
-			message.respond("<%> %".f(name, msg) + (lnk ? ' ('+lnk+')' : ''));
-		}
-
-		if (!/default_profile/.test(img)) {
-			get('http://tinyurl.com/api-create.php?url=' + img, function(tiny, response) {
-				msgresp(name, msg, tiny);
-			});
-		} else {
-			msgresp(name, msg);
-		}
-
-	});
-}
 
 function wiktionary(message, random) {
 	var base = 'http://en.wiktionary.org';
