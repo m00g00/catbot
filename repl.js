@@ -44,15 +44,15 @@ process.stdout.write = function(str) {
 	};*/
 
 			
-	with (require('repl')) {
-		writer = function(obj, showHidden, depth) {
+	var rp = require('repl');
+	rp.writer = function(obj, showHidden, depth) {
 			return print_r(obj, showHidden, repl.context._depth, null, null, true);
-		};
+	};
 			
-		global.repl = start('bot> ');
+	global.repl = rp.start('');
 
-		global.repl.context._depth = 3;	
-	}
+	global.repl.context._depth = 2;	
+	
 
 	//Script.runInContext = tmp;
 //}

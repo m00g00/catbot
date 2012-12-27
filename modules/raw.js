@@ -1,6 +1,6 @@
 var hlog = require('./helper').log,
-	log = hlog.putIRC;
-	getcolor = hlog.parseColor;
+	log = hlog.putIRC,
+	getcolor = hlog.parseColor,
 	color = hlog.colors;
 
 /*irc.registerStreamEvents(mod);

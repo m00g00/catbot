@@ -9,15 +9,17 @@
 var v8 = {
 	path_history: 'modules/.js/',
 	ctx: {},
-	call: function(msg) {
-		if (!msg.query.text.trim()) return;
+	call: function(msg, code) {
+        code = code || msg.query.text.trim()
+		if (!code) return;
+
 		var ctx = v8.getctx(msg);
 
 		ctx.once('flush', function(res) {
-            msg.respond(res);
+            msg.respond(' '+res);
 		});
 	
-		ctx.call(msg.query.text.trim());
+		ctx.call(code);
 	},
 
 	getctx: function(msg) {
@@ -29,7 +31,8 @@ var v8 = {
 	},
 
 	spawn: function(name) {
-		var child = require('child_process').spawn('sudo', ['-ujail', './botshell'], { cwd: '/home/jail' });
+		//var child = require('child_process').spawn('sudo', ['-ujail', './botshell'], { cwd: '/home/jail' });
+		var child = require('child_process').spawn('./botshell');
 		child.stdout.setEncoding('utf8');
 		child.stderr.setEncoding('utf8');
 		child.stdin.setEncoding('utf8');
@@ -119,3 +122,24 @@ mod.on('UNLOAD', function() {
 });
 
 exports.ctx = v8.ctx;
+
+
+
+var coco = function(){
+    var cc = require('coco'),
+        ccc = function(str){ return cc.compile(str, {bare:1}).replace(/\n\s*/g, '') }
+    return {
+        compile: function(msg)
+        { try { var cstr = ccc(msg.query.text.trim())
+                msg.respond(cstr) }
+          catch(e) { msg.respond(e.message) } },
+
+        run: function(msg)
+        { try { var cstr = ccc(msg.query.text.trim())
+                v8.call(msg, cstr) }
+          catch(e) { msg.respond(e.message) } } } }()
+    
+
+mod.on('.c', coco.run)
+mod.on('.cc', coco.compile)
+

@@ -7,6 +7,17 @@
 iframe { 
     border: none;
 }
+
+div#reverse {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	font-weight: bold;
+	text-align: center;
+	display: inline;
+	cursor: pointer;
+	font-size: 1.1em;
+}
 </style>
 
 <script src="/chess.js"></script>
@@ -16,6 +27,8 @@ iframe {
     function g(x) { return document.querySelectorAll(x) }
     function id(x) { return document.getElementById(x) }
 
+	var name = "{{name}}";
+
     game = new Chess();
     game.load_pgn("{{pgn}}");
     game.current_moves = game.moves({verbose:1});
@@ -23,21 +36,27 @@ iframe {
     game.movesAt = function(id) {
         return game.current_moves.filter(function(m){ return m.from == id });
     };
+
             
 
     document.onreadystatechange = function() {
-        console.log(document.readyState);
         if (document.readyState == 'complete') {
             var info = id('info'),
                 board = id('board'),
+				rev = id('reverse'),
                 doc = board.contentDocument,
                 bid = function(x) { return board.contentDocument.getElementById(x) },
-                inb = bid('board');
+				inb = bid('board'),
+				buildsrc = function() { return '/chess/{{name}}/' + rev.textContent };
+
+				rev.addEventListener('click', function(e) {
+					rev.textContent = rev.textContent == 'w' ? 'b' : 'w';
+					window.location = buildsrc();
+				}, false);
 
                 inb.addEventListener('mouseover', function(e) {
                     var square = e.target.parentNode;
                     game.movesAt(square.id).forEach(function(m) { 
-                        console.log(m);
 
                         var psquare = bid(m.to);
                         if (!psquare.placeholder) {
@@ -69,7 +88,19 @@ iframe {
                     });
                 }, false);
 
+
+				
             info.innerHTML = game.pgn();
+
+
+			var xhr = new XMLHttpRequest() 
+			xhr.src=
+			xhr.onload = xhr.ontimeout = xhr.onerror = function(){location.reload()}//function() { doc.location.reload() }
+			xhr.open('GET', '/chess/'+name+'/wait', true)
+
+
+			xhr.timeout = 600000;
+			xhr.send();
 
 
         }
@@ -79,7 +110,8 @@ iframe {
 </script>
 </head>
 <body>
-<iframe id="board" height="700" width="700" src="/chess/{{name}}/svg"></iframe>
+	<div id="reverse">{{orientation}}</div>
+<iframe id="board" height="700" width="700" src="/chess/{{name}}/svg/{{orientation}}"></iframe>
 <div id="info"></div>
 </body>
 </html>

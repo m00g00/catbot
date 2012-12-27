@@ -1,5 +1,6 @@
 var evdefault = com.eventFilter;
 
 com.eventFilter = function(event) {
-	return evdefault(event).replace('!', '.');
+	return event[0] == '!' || event[0] == '.' ? 
+            evdefault(event).replace('!', '.') : evdefault(event);
 }

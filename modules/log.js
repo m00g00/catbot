@@ -11,8 +11,8 @@ mod.on('!log', loginfo);
 mod.on('!stats', stats);
 mod.on('!statsinfo', chanstats);
 
-mod.on('!talk', talk);
-mod.on('!smart', function(msg) { talk(msg, true) });
+mod.on(['!talk', '!t'], talk);
+mod.on(['!smart', '!s'], function(msg) { talk(msg, true) });
 mod.on('PRIVMSG', talkaboutme);
 
 mod.on('PRIVMSG', expireCache);
@@ -729,7 +729,7 @@ function stats(message) {
 	var nick, chan;
 
 	if (query.length == 2) {
-		if (query[0][0] != '#') {
+		if (!/^#[\w#]$/.test(query)) {
 			message.respond("Invalid query");
 			return;
 		}
@@ -751,7 +751,7 @@ function stats(message) {
 
 	print_r(qcount);
 
-	db.query(qcount, [nick], function(res) {
+	db.query(qcount, ['"'+nick+'"'], function(res) {
 		console.log('hai');
 		if (!res[0].c) {
 			message.respond('Not found');
@@ -771,11 +771,11 @@ function stats(message) {
 
 			var diff = ltime - ftime;
 
-			var days = diff / 1000 / 60 / 60 / 24;
+			var days = Math.ceil(diff / 1000 / 60 / 60 / 24);
 
 			var linesper = count / days;
 
-			message.respond('Stats for %: % lines, Average lines/day: %'.f(nick, count.toCommaString(), linesper.toFixed(2)));
+			message.respond('Stats for %: % lines, Average lines/day: % since %  -- DAYS: % COUNT: %'.f(nick, count.toCommaString(), linesper.toFixed(2), ftime, days, count));
 		});
 	});
 
@@ -819,7 +819,7 @@ mod.on('!stfu', function() {
 function talk(message, useall) {
 	var text = message.text[0] == '!' ? message.query.text : message.text,
 		seeds = text.replace(/[^A-Za-z0-9' ]/g, '').split(' ').filter(function(w) { return w.toLowerCase() != mod.irc.state.nick.toLowerCase() }),
-		order = 2,
+		order = 3,
 		max = 20,
 		tblquery = function(table) { return 'SELECT content FROM "' + table + '" WHERE content MATCH $term' };
 
@@ -840,6 +840,14 @@ function talk(message, useall) {
 	} else {
 		chain(tblquery(normalizeChan(message.channel)));
 	}
+
+    function getorder() {
+        return Math.max(2,~~(Math.random()*4))
+    }
+
+    order = getorder()
+
+    dump(order)
 
 
 	function chain(query) {

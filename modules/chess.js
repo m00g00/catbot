@@ -4,7 +4,7 @@ var allgames = global.share.chess || (global.share.chess = {}),
     sname = mod.irc.getServerName(),
     games = allgames[sname] || (allgames[sname] = {}),
     
-    HTTP_SERVER = { port: 4800, link: 'http://bigmooworld.com:4800/chess/{name}/svg', html_template: 'modules/chess/index.html' },
+    HTTP_SERVER = { port: 4800, link: 'http://catbot.bigmooworld.com/chess/{name}', html_template: 'modules/chess/index.html' },
     SVG = { template: 'modules/chess/game.svg.stache' },
     DCC_SERVER = { port: 4900, ip: 	1122249322 },
 
@@ -16,9 +16,12 @@ var allgames = global.share.chess || (global.share.chess = {}),
     };
 
 
-var fs = require('fs');
+	var fs = require('fs'), stache, connect;
 if (SVG) SVG.source = fs.readFileSync(SVG.template, 'utf8');
-if (HTTP_SERVER) HTTP_SERVER.html = fs.readFileSync(HTTP_SERVER.html_template, 'utf8');
+if (HTTP_SERVER) 
+	HTTP_SERVER.html = fs.readFileSync(HTTP_SERVER.html_template, 'utf8'),
+	stache = require('./modules/chess/mustache.js'),
+	connect = require('connect'); 
 
 games.each(function(g,n) {
     play(g, g.msg, g.opts);
@@ -54,81 +57,104 @@ mod.on('.chess', function(msg) {
     
 });
 
-if (HTTP_SERVER && !global.share.chess_server) void function() {
-    var connect = require('connect'),
-        stache = require('./modules/chess/mustache.js');
+if (HTTP_SERVER) !function() {
+	var cserv = global.share.chess_server, app = require('route66')
+	if (!cserv) {
+		cserv = global.share.chess_server = connect(connect.logger('dev'), connect.static('modules/chess')); 
 
-    global.share.chess_server = connect(
-            connect.logger(),
-            connect.static('modules/chess'),
-            connect.router(function(app) {
-                app.get('/', function(req, res, next) {
-                    res.end(mod.irc.modules.random.exports.peen());
-                });
+		cserv.listen(HTTP_SERVER.port);
+	}
 
-                var getGame = function(name) { return games['#'+name] };
+	if (cserv.stack.length > 2) cserv.stack.pop();
 
-                app.get('/chess/:game', function(req, res, next) {
-                    var game = getGame(req.params.game);
+	cserv.use('/chess/*', function(req, res){
 
-                    var body = stache.to_html(HTTP_SERVER.html, {
-                        title: 'chess >> ' + game.name(),
-                        pgn: game.pgn(),
-                        name: req.params.game
-                    });
+			var tokens = req.url.split('/')
+				
 
-                    res.end(body);
-                });
 
-                app.get('/chess/:game/svg', function(req, res, next) {
-                    var game = getGame(req.params.game);
 
-                    if (!game) { next(); return }
+			dump(tokens)
 
-                    var body = svg(game);
+			res.end(mod.irc.modules.random.exports.peen())
+		
+	})
 
-                    res.setHeader('Content-Type', 'image/svg+xml');
+	/*app.routes.get.length=0;
 
-                    res.end(body);
-                });
+	cserv.use(app)
+		app.get('/', function(req, res, next) {
+			res.end(mod.irc.modules.random.exports.peen());
+		});
 
-                app.get('/chess/:game/pgn', function(req, res, next) {
-                    var game = getGame(req.params.game);
+		var getGame = function(name) { return games['#'+name] || games['##'+name] };
 
-                    if (!game) { next(); return }
+		app.get('/chess/:game/wait', function(req, res, next) {
+				var game = getGame(req.params.game)
+				game.onturn.push(function() { res.end() }) })
 
-                    var body = game.pgn();
 
-                    res.setHeader('Content-Type', 'text/plain');
-                    res.end(body);
-                });
-                    
-            })
-    );
+
+		app.get('/chess/:game/svg/:o?', function(req, res, next) {
+			var game = getGame(req.params.game),
+				reverse = req.params.o == 'b';
+
+			if (!game) { next(); return }
+
+			var body = svg(game, reverse);
+
+			res.setHeader('Content-Type', 'image/svg+xml');
+
+			res.end(body);
+		});
+
+		app.get('/chess/:game/pgn', function(req, res, next) {
+			var game = getGame(req.params.game);
+
+			if (!game) { next(); return }
+
+			var body = game.pgn();
+
+			res.setHeader('Content-Type', 'text/plain');
+			res.end(body);
+		});
+			
+		app.get('/chess/:game/:o?', function(req, res, next) {
+			dump(req.params);
+			var game = getGame(req.params.game);
+
+			if (!game) { res.end('No such game'); return }
+
+			var body = stache.to_html(HTTP_SERVER.html, {
+				title: 'chess >> ' + game.name(),
+				pgn: game.pgn(),
+				name: req.params.game,
+				orientation: req.params.o == 'b' ? 'b' : 'w'
+			});
+
+			res.end(body);
+		});*/
     
-    global.share.chess_server.listen(HTTP_SERVER.port),
 
-    mod.on('UNLOAD', function() { 
+    /*mod.on('UNLOAD', function() { 
             if (global.share.chess_server) {
                 console.log("Stopping http...");
                 global.share.chess_server.close();
                 delete global.share.chess_server;
                 console.log("http stopped (hopefully)");
             }
-    });
+    });*/
 
 }();
 
     
 
 
-function svg(game) {
-    var stache = require('./modules/chess/mustache.js');
-
-    var xml = stache.to_html(SVG.source, {
-            width: '100%',
-            height: '100%',
-            squares: game.SQUARES.map(function(id, ix) { 
+function svg(game, reverse) {
+		rv = reverse?1:0,
+		ranks = [8,7,6,5,4,3,2,1].map(function(r,i){ return { y: Math.abs(i - 7*rv) * 10 + '%', rank: r } }),
+		files = ['a','b','c','d','e','f','g','h'].map(function(f,i){ return { x: Math.abs(i - 7*rv)*10 + '%', file: f } }),
+		squares = game.SQUARES.map(function(id, ix) { 
                 var sq = game.get(id); 
                 if (sq) {
                     sq.type = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' }[sq.type];
@@ -137,46 +163,18 @@ function svg(game) {
 
                 return {
                     id: id, color: game.square_color(id) == 'light' ? 'white' : 'black',
-                    tx: (ix % 8) * 100, ty: ~~(ix / 8) * 100,
+					tx: Math.abs(ix % 8 - 7*rv) * 100, ty: Math.abs(~~(ix / 8) - 7*rv) * 100,
                     piece: sq
                 }
-            }),
-            /*squares: (function() {
-                var squares = [], rank, file;
-
-                for(rank=8; rank; rank--)
-                    for(file=1; file<=8; file++) { 
-                        var id = String.fromCharCode(96+file) + rank;
-                        squares.push({ 
-                            id: id,
-                            color: file%2==rank%2 ? 'black' : 'white',
-                            //x: (file-1)*10 + '%',
-                            //y: (8-rank)*10 + '%',
-                            
-                            tx: (file-1)*100,
-                            ty: (8-rank)*100,
-
-                            piece: (function() { 
-                                var sq = game.get(id);
-
-                                if (sq) {
-                                    sq.type = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' }[sq.type];
-                                    sq.color = { b: 'black', w: 'white' }[sq.color];
-                                }
-
-                                return sq;
-                            }())
+		});
 
 
-                        });
-                    }
-
-
-                return squares;
-
-           }()),*/
-           ranks: [8,7,6,5,4,3,2,1].map(function(r,i){ return { y: i*10 + '%', rank: r } }),
-           files: ['a','b','c','d','e','f','g','h'].map(function(f,i){ return { x: i*10 + '%', file: f } })
+    var xml = stache.to_html(SVG.source, {
+           width: '100%',
+           height: '100%',
+           squares: squares,
+           ranks: ranks,
+           files: files
     });
 
     return xml;
@@ -189,6 +187,7 @@ function play(game, msg, opts) {
 
     game.msg = msg;
     game.opts = opts;
+	game.onturn = [];
     
     var events = [];
 
@@ -204,8 +203,9 @@ function play(game, msg, opts) {
     };
 
     game.__proto__ = {
-        print: function() {
+        print: function(noboard) {
 
+            if (!noboard)
             translate(game.ascii().trimRight()).split('\n').forEach(function(row) { 
                     msg.respond(row) 
             });
@@ -262,11 +262,11 @@ function play(game, msg, opts) {
             dump(res);
 
             if (!res) msg.respond("Illegal move");
-            else game.print();
+			else game.print(true), game.onturn.forEach(function(f){f()});
          },
       
          undo: function(m) {
-                game.undo() && game.print();
+                game.undo() && game.print(true);
          },
 
          moves: function(m) {
@@ -280,6 +280,8 @@ function play(game, msg, opts) {
          pgn: function(m) {
                 msg.respond(game.pgn({ newline_char: ', ' }));
          },
+
+		 fen: function(m) { msg.respond(game.fen()) },
          
          print: function() { game.print() },
 

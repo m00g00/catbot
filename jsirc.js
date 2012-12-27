@@ -19,7 +19,7 @@ var sep = log.colors.yellow + ':' + log.colors.reset;
 global.share = {
 	process_start_time: new Date,
 	log_short: true,
-	TIMESTAMP_MODE: 1,
+	TIMESTAMP_MODE: 0,
 	TIMESTAMP_FORMAT: '%H' + sep + '%M' + sep + '%S'
 };
 

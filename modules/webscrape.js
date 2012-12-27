@@ -68,7 +68,12 @@ function goog(query, resp) {
 		ls.some(function(l) {
 			if (i >= ln) return true;
 			i++
-			msg.push(unescape(l.text()) + ' @ ' + l.attr('href').value())
+				msg.push(unescape(l.text()) + ' @ ' + 
+						(function(){ dump("moooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo"); 
+									 var v = l.attr('href').value(),
+									 vul = url.parse(v, true);
+									 dump(v,vul);
+			  						 return /^\/url\?q=.*/.test(v) ? vul.query.q : v }()))
 		});
 
 		resp(msg.join(' -- '));
@@ -268,7 +273,9 @@ function ifl(query, site, callback, nofollow) {
 	if (nofollow) get(uri, callback, true);
 	else scrape(uri, function(doc, body, request) {
 
-		if (request.socket.host.match('google.com')) {
+		dump(request, 0, 2)
+
+		if (request.req._headers.host.match('google.com')) {
 			var flink = doc.get('//div[@id="ires"]//a/@href').text().trim();
 
 			console.log("Not so lucky...redirecting again: " + flink);

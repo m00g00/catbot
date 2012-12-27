@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
-
+//v8::Handle<v8::Value> AccGetPrint(v8::Local<v8::String> prop, const AccessorInfo& info)
 
 
 // Creates a new execution environment containing the built-in
@@ -130,8 +130,11 @@ int main(int argc, char* argv[]) {
 v8::Persistent<v8::Context> CreateShellContext() {
   // Create a template for the global object.
   v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New();
+
+  //global->SetAccessor(v8::String::New("print"), AccGetPrint);
   // Bind the global 'print' function to the C++ Print callback.
-  global->Set(v8::String::New("print"), v8::FunctionTemplate::New(Print));
+  global->Set(v8::String::New("print"), v8::FunctionTemplate::New(Print), ReadOnly);
+
 
   return v8::Context::New(NULL, global);
 }
