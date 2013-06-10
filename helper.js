@@ -524,17 +524,19 @@ var log = {
 		});
 	},
 
-	put: function(str) {
+	put: function(str, force) {
+		if (!force && global.constants.SUPRESS_LOG) return;
+
 		if (global.constants.USE_REPL) {
 			process.stdout.write('\r'+str+'\n');
-			global.repl.displayPrompt();
+			//global.repl.displayPrompt();
 		} else {
 			process.stdout.write(str+'\n');
 		}
 	},
 
-	putIRC: function(str) {
-		log.put(log.getTimestamp() + ' ' + log.IRCSpecialChars(str));
+	putIRC: function(str, force) {
+		log.put(log.getTimestamp() + ' ' + log.IRCSpecialChars(str), force);
 	},
 
 	formatColor: function(str, obj, colors) {
@@ -562,19 +564,20 @@ var log = {
 				log.putIRC(str);
 	},
 
+	Fformat: function(){ log.putIRC(string.format.apply(null,arguments), true) },
+
 	formatObject: function(str, obj) {
 		log.putIRC(str.fo(obj));
 	},
-		
 
-	colora: function(color, args) {
+	colora: function(color, args, force) {
 		args[0] = args[0].split('\n').map(function(e) { return color + e + log.colors.reset; }).join('\n');
 		//args[0] = color + args[0] + log.colors.reset;
-        log.format.apply(null, args);
+        log[force?'Fformat':'format'].apply(null, args);
 	},
 
 	error: function() {
-		log.colora(log.colors.red, arguments);
+		log.colora(log.colors.red, arguments, true);
 	},
 
 	success: function() {

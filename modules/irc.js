@@ -1,8 +1,8 @@
-with (require('./helper').log) {
-		var log = putIRC;
-		var getcolor = parseColor;
-		var color = colors;
-}
+var lg = require('./helper').log,
+	log = lg.putIRC,
+	getcolor = lg.parseColor,
+	color = lg.colors;
+
 
 var IRCMessage = {
 	/*nick: null,

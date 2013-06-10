@@ -153,6 +153,8 @@ var Chess = function(fen) {
   var history = [];
   var header = {};
 
+
+
   /* if the user passes in a fen string, load it, else default to
    * starting position
    */
@@ -1114,6 +1116,36 @@ var Chess = function(fen) {
       return reset();
     },
 
+	serialize: function(nostr) {
+		var o={
+			board: board,
+			kings: kings,
+			turn: turn,
+			castling: castling,
+			ep_square: ep_square,
+			half_moves: half_moves,
+			move_number: move_number,
+			history: history,
+			header: header
+		};
+
+
+		return nostr?o:JSON.stringify(o);
+	},
+
+	unserialize: function(str) {
+		var o = typeof str == 'string' ? JSON.parse(str):str;
+		board = o.board;
+		kings = o.kings;
+		turn = o.turn;
+		castling = o.castling;
+		ep_square = o.ep_square;
+		half_moves = o.half_moves;
+		move_number = o.move_number;
+		history = o.history;
+		header = o.header;
+	},
+
     moves: function(options) {
       /* The internal representation of a chess move is in 0x88 format, and
        * not meant to be human-readable.  The code below converts the 0x88
@@ -1345,6 +1377,8 @@ var Chess = function(fen) {
       if (header_string[0] != '[') {
         header_string = '';
       }
+
+	  console.log("######################\n" + header_string)
  
      reset();
       
@@ -1353,6 +1387,7 @@ var Chess = function(fen) {
       for (var key in headers) {
         set_header([key, headers[key]]);
       }
+	  console.log(headers);
       
       /* delete header to get the moves */
       var ms = pgn.replace(header_string, '').replace(new RegExp(mask(newline_char), 'g'), ' ');
@@ -1373,6 +1408,9 @@ var Chess = function(fen) {
 
       for (var half_move = 0; half_move < moves.length - 1; half_move++) {
         move = get_move_obj(moves[half_move]);
+		console.log("$$$$$$$$$$$$$$$$$$$$$$$$$$")
+		console.log(move, half_move, moves[half_move]);
+		console.log(this.ascii())
         
         /* move not possible! (don't clear the board to examine to show the
          * latest valid position)

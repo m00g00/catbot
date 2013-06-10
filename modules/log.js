@@ -30,7 +30,7 @@ function findTemptables() {
 			global.share.temptables[row.name] = true;
 		});
 
-		print_r(global.share.temptables);
+	//	print_r(global.share.temptables);
 	});
 }
 
@@ -237,7 +237,7 @@ mod.on('PRIVMSG', function beer(message) {
 
 
 function normalizeChan(chan) {
-	return typeof chan == 'string' ? mod.irc.getId() + '::' + chan.toLowerCase() : false;
+	return typeof chan == 'string' && chan[0] == '#' ? mod.irc.getId() + '::' + chan.toLowerCase() : typeof chan == 'string' && chan[0] == '^' ? chan.substr(1) : false;
 	//return typeof chan == 'string' ? /*mod.irc.getId() + '_' +*/ chan.replace(/[^A-Za-z0-9_]/g, '').toLowerCase() : false;
 }
 
@@ -540,10 +540,10 @@ function quoteparams(message) {
 	var querytxt = message.query.text.trim(),
 		chan, qp = querytxt.split(/<(.*?)>|\s+/).filter(function(e) { return e != '' && typeof e != 'undefined' });
 
-	if (querytxt[0] == '"' || querytxt[0] == "'") {
+	if (false && (querytxt[0] == '"' || querytxt[0] == "'")) {
 		quoteall(message);
 		return;
-	} else if (querytxt[0] == '#') {
+	} else if (querytxt[0] == '#'/* || querytxt[0] == '^'*/) {
 		chan = qp.shift();	
 	} else if (message.channel) {
 		chan = message.channel
@@ -613,6 +613,8 @@ function quoteall(message) {
 	});
 }
 
+var loglimit = mod.irc.conf.irclog_limit || 10;
+
 function loginfo(message) {
 	var query = message.query;
 
@@ -621,9 +623,9 @@ function loginfo(message) {
 
 	if (!qparts || 
 		(qparts[1] && qparts[3]) || 
-		(qparts[1] && +qparts[1].match(/^\d*/)[0] > 10) || 
-		(qparts[3] && Math.abs(+qparts[3]) > 10)) { 
-			message.respond("Usage: !log logid | [[n]~]logid | logid[(+|-)n(<=10)]"); 
+		(qparts[1] && +qparts[1].match(/^\d*/)[0] > loglimit) || 
+		(qparts[3] && Math.abs(+qparts[3]) > loglimit)) { 
+			message.respond("Usage: !log logid | [[n]~]logid | logid[(+|-)n" + (loglimit<9000?"(<="+loglimit+")":'')); 
 			return; 
 	}
 
@@ -818,24 +820,37 @@ mod.on('!stfu', function() {
 
 function talk(message, useall) {
 	var text = message.text[0] == '!' ? message.query.text : message.text,
-		seeds = text.replace(/[^A-Za-z0-9' ]/g, '').split(' ').filter(function(w) { return w.toLowerCase() != mod.irc.state.nick.toLowerCase() }),
+		cmds = text.split(' ').filter(function(w){ return w[0]=='^' }),
+		seeds = text.split(' ').filter(function(w){return w[0]!='^'}).join(' ').replace(/[^A-Za-z0-9' ]/g, '').split(' ').filter(function(w) { return w.toLowerCase() != mod.irc.state.nick.toLowerCase() }),
 		order = 3,
 		max = 20,
-		tblquery = function(table) { return 'SELECT content FROM "' + table + '" WHERE content MATCH $term' };
+		tblquery = function(table) {dump("MOO"); dump(table); return 'SELECT content FROM "' + table + '" WHERE content MATCH $term' };
 
 	seeds.sort(function(a,b) { return b.length - a.length });
 
 	if (useall) {
 		var usechan;
-		if (useall && message.query.args[0][0] == '#') {
-			usechan = normalizeChan(message.query.args[0]);
-			seeds = seeds.filter(function(s) { return s != usechan.toLowerCase() });
+		if (useall && cmds.length) {
+			usechan = cmds[0].substr(1);
+			console.log("ASDASD: " + usechan)
+			//seeds = seeds.filter(function(s) { return s != usechan.toLowerCase() });
 		}
 		getMemTables(function(tables) {
-			dump(tables);
-			chain(tables.filter(function(t) {
-				return !usechan || (usechan && usechan == t.split('.')[1]);
-			}).map(tblquery).join(' UNION '));
+			var cccc=tables.filter(function(t) {
+				return usechan==undefined ? true : t.match(usechan);
+			})
+
+			if (!cccc.length) {
+				message.respond("Chan not found")
+				return
+			}
+
+			dump("OKTHEN")
+			dump(cccc);
+			
+			chain(cccc.map(tblquery).join(' UNION '));
+
+
 		});
 	} else {
 		chain(tblquery(normalizeChan(message.channel)));
@@ -853,6 +868,7 @@ function talk(message, useall) {
 	function chain(query) {
 		/*console.log(query);
 		console.log(seeds);*/
+		dump(query)
 
 	var sentance = [seeds.shift()];
 

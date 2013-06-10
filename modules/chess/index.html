@@ -4,6 +4,12 @@
 <title>{{title}}</title>
 
 <style>
+h1 {
+	margin:0;
+	font-size:1.1em;
+	font-weight: normal;
+}
+
 iframe { 
     border: none;
 }
@@ -18,6 +24,10 @@ div#reverse {
 	cursor: pointer;
 	font-size: 1.1em;
 }
+
+div#reverse a { text-decoration: none; color: #000; }
+
+div#info { white-space: pre; }
 </style>
 
 <script src="/chess.js"></script>
@@ -30,7 +40,7 @@ div#reverse {
 	var name = "{{name}}";
 
     game = new Chess();
-    game.load_pgn("{{pgn}}");
+    game.load_pgn("{{pgnn}}");
     game.current_moves = game.moves({verbose:1});
 
     game.movesAt = function(id) {
@@ -46,13 +56,13 @@ div#reverse {
 				rev = id('reverse'),
                 doc = board.contentDocument,
                 bid = function(x) { return board.contentDocument.getElementById(x) },
-				inb = bid('board'),
-				buildsrc = function() { return '/chess/{{name}}/' + rev.textContent };
+				inb = bid('board');
+				//buildsrc = function() { return '/chess/{{name}}/' + rev.textContent };
 
-				rev.addEventListener('click', function(e) {
+				/*rev.addEventListener('click', function(e) {
 					rev.textContent = rev.textContent == 'w' ? 'b' : 'w';
 					window.location = buildsrc();
-				}, false);
+				}, false);*/
 
                 inb.addEventListener('mouseover', function(e) {
                     var square = e.target.parentNode;
@@ -94,12 +104,10 @@ div#reverse {
 
 
 			var xhr = new XMLHttpRequest() 
-			xhr.src=
-			xhr.onload = xhr.ontimeout = xhr.onerror = function(){location.reload()}//function() { doc.location.reload() }
+			xhr.onload = xhr.ontimeout = function(){location.reload()}//function() { doc.location.reload() }
 			xhr.open('GET', '/chess/'+name+'/wait', true)
 
 
-			xhr.timeout = 600000;
 			xhr.send();
 
 
@@ -110,8 +118,9 @@ div#reverse {
 </script>
 </head>
 <body>
-	<div id="reverse">{{orientation}}</div>
+<h1>{{title}}</h1>
+	<div id="reverse"><a href="/chess/{{name}}/{{rotated}}">{{orientation}}</a></div>
 <iframe id="board" height="700" width="700" src="/chess/{{name}}/svg/{{orientation}}"></iframe>
-<div id="info"></div>
+<div id="info">{{pgn}}</div>
 </body>
 </html>

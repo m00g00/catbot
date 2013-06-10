@@ -5,7 +5,8 @@ var Stream = require('net').Stream,
 	Script = require('./lib/scripter'),
     //fs = require('fs'),
     sys = require('sys'),
-    log = require('./helper').log;
+    log = require('./helper').log,
+	util = require('util');
 
 var logf = log.format;
 var loge = log.error;
@@ -39,6 +40,8 @@ function IRC(conf) {
 	};
 
 	this.common = {};
+
+	if (conf.supress_startup_messages) global.constants.SUPRESS_LOG = true
 
 	/*var db = require('./lib/db').use(this.conf.database.type);
 	db.connect(this.conf.database,
@@ -84,7 +87,7 @@ IRC.addPrototype({
 		});
 
 		this.on('module_before_load', function(name, file) {
-			logq('I CAN HAS "%s"?', name);
+			//logq('I CAN HAS "%s"?', name);
 		});
 
 		this.on('module_loaded', function(name, file, module) {
@@ -92,20 +95,28 @@ IRC.addPrototype({
 				name : file;
 			this.modules[key] = module;
 
-			logf('Registered % event handlers', module.getNumListeners());
-			logs('I HAS "%s"!\n', name);
+			if (this.conf.log_show_module_events)
+				logf('Registered % event handlers', module.getNumListeners());
+			logs('%s loaded', name);
 		});
 
 		this.on('module_load_error', function(name, file, error) {
-			print_r(error, 1, 3, 'Module Error');
+			loge('module error');
+			util.puts(error.stack)
+			//print_r(error, 1, 3, 'Module Error');
+			//util.inspect(error,1,3);
+
 			
-			loge('I CANT HAS "%s", IT IZ BROKED :( \n', name);
+			//dump(error);
+			loge('%s not loaded', name);
 		});
 
 		this.on('modules_loaded', function() {
-			if (this.modules.numProperties() == this.conf.modules.length) logs('I HAS ALL UR BOTZ AND UR BASE');
-			else if (this.modules.numProperties() > 0) loge('I HAS UR BOTZ BUT I WANT MOAR!');
+			//if (this.modules.numProperties() == this.conf.modules.length) logs('I HAS ALL UR BOTZ AND UR BASE');
+			//else if (this.modules.numProperties() > 0) loge('I HAS UR BOTZ BUT I WANT MOAR!');
+			logf(this.modules.numProperties() + '/' + this.conf.modules.length + ' modules loaded');
 
+			//global.constants.SUPRESS_LOG=false;
 			this.connect();
 		});
 	},

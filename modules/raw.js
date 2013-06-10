@@ -1,7 +1,8 @@
 var hlog = require('./helper').log,
 	log = hlog.putIRC,
 	getcolor = hlog.parseColor,
-	color = hlog.colors;
+	color = hlog.colors,
+	SUPRESS_LOG = false;
 
 /*irc.registerStreamEvents(mod);
 mod.on('stream::data', onData);
@@ -579,7 +580,8 @@ irc.on('data', ondata);
 
 
 function cutelog(msg) {
-	p = [ color.bold.green + msg.command ];
+	p = [];
+	msg.command!='PRIVMSG'&&p.push(color.bold.green + msg.command);
 
 	if (msg.command == 'QUIT' || msg.command == 'NICK') p.push(mod.irc.getServerName());
 	else if (msg.toMe()) p.push(color.bold.white + mod.irc.state.nick);
@@ -594,6 +596,8 @@ function cutelog(msg) {
 	return p.join(color.reset + ' ');
 }
 
+var ignoredcommands = irc.conf.log_ignoredcommands || [];
+
 
 function emitLine(line) {
 
@@ -603,7 +607,8 @@ function emitLine(line) {
 		message.command = 'CTCP'; message.text = message.text.slice(1, message.text.length - 1);
 	}
 
-	if ((message.command != "PING" && message.command != "PONG") || global.share.log_pingpong == true) 
+	if ( ((message.command != "PING" && message.command != "PONG") || global.share.log_pingpong == true) &&
+		 ( ignoredcommands.indexOf(message.command) == -1 ) )
 		if (share.log_short && /PRIVMSG|QUIT|JOIN|PART/.test(message.command)) 
 			log(cutelog(message));
 			/*log(('{g}{channel}{r} ' + 
@@ -613,7 +618,7 @@ function emitLine(line) {
 						  c: color.bold.cyan, r: color.reset, b: color.blue,
 						  channel: message.channel, nick: message.nick, 
 						  text: message.text }));*/
-		else 
+		else //if (!SUPRESS_LOG)
 			log(
 				(servers.numProperties() > 1 ? color.grey + mod.irc.getId()[0] + color.reset + '': '') +
 				(message.direction == 'outgoing' ? 
@@ -639,6 +644,8 @@ function onconnect() {
 	irc.state.connect_time = new Date;
 
 	irc.state.nick = irc.conf.nick;
+
+	global.constants.SUPRESS_LOG = irc.conf.supress_startup_messages;
 
 	echo('NICK {nick}'.fo(mod.irc.conf));
 	echo('USER {user} {mode} * :{name}'.fo(mod.irc.conf));
@@ -686,6 +693,7 @@ mod.on('PART', function(message) {
 mod.on(376, startup);
 mod.on(422, startup);
 
+
 function startup() {
 	irc.state.logged_in = true;
 	//Send login messages if any
@@ -697,6 +705,8 @@ function startup() {
 	mod.irc.doInConf('channels', function(channel) {
 		com.join(channel);
 	});
+
+	setTimeout(function(){ global.constants.SUPRESS_LOG = false; }, 1500);
 };
 
 /*mod.on('PRIVMSG \x01', function(message) {

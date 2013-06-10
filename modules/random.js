@@ -11,11 +11,15 @@ mod.on('!spell', spell);
 
 exports.peen = function(msg) {
 	var r=function(c,m){return Array(~~(Math.random()*m)).join(c)}; 
-	return r('#',4)+'8'+r('=',30)+'D'+r('~',10)
+	//return r('#',4)+'8'+r('=',msg.from.toLowerCase()=='cassie'?100:40)+'D'+r('~',10)
+	return r('#',4)+'8'+r('=',60)+'D'+r('~',10)
 }
 mod.on('.peen', function(msg) {
-	msg.respond(exports.peen());
+	msg.respond(exports.peen(msg));
 });
+
+//var dice=['⚀','⚁','⚂','⚃','⚄','⚅'];
+//mod.on('.dice', function(msg) { msg.respond(dice.getRandom() + ' ' + dice.getRandom()) })
 /*mod.on('.kafc', function(msg) {
 	msg.respond(kaffine_compile(msg.query.text).trim());
 });*/
@@ -177,7 +181,7 @@ mod.on('!give', function(msg) {
 	return [times, from];
 }*/
 
-mod.on('!alarm', function(msg) {
+/*mod.on('!alarm', function(msg) {
 	var time, message, qargs = msg.qarg, p = qargs.length;
 
 	while (!+(time = new Date(qargs.slice(0, --p).join(' '))) && p) {}
@@ -208,7 +212,7 @@ mod.on('!alarms', function(msg) {
 		dump(obj);
 		msg.respond(obj.time + ': ' + obj.message);
 	});
-});
+});*/
 
 function spell(message) {
 	var spawn = require('child_process').spawn,

@@ -45,11 +45,20 @@ process.stdout.write = function(str) {
 
 			
 	var rp = require('repl');
-	rp.writer = function(obj, showHidden, depth) {
+	/*rp.writer = function(obj, showHidden, depth) {
 			return print_r(obj, showHidden, repl.context._depth, null, null, true);
-	};
+	};*/
+
+	var ins=require('./lib/eyes.js').inspector({stream:process.stdout}), util=require('util');
+	//rp.writer = function(o){  ins(o) }
 			
-	global.repl = rp.start('');
+	global.repl = rp.start({
+		prompt: '> ',
+		terminal: true,
+		ignoreUndefined: true,
+		useGlobal: true,
+		//writer: ins
+	});
 
 	global.repl.context._depth = 2;	
 	

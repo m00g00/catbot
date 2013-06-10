@@ -2,7 +2,8 @@
 var constants = {
 	USE_REPL: true,
 	GLOBAL_CONF: './global.js',
-	PATH_ROOT: __dirname
+	PATH_ROOT: __dirname,
+	SUPRESS_LOG: false
 };
 global.constants = constants;
 
@@ -18,17 +19,24 @@ require('./helper').
 var sep = log.colors.yellow + ':' + log.colors.reset;
 global.share = {
 	process_start_time: new Date,
-	log_short: true,
+	//log_short: true,
 	TIMESTAMP_MODE: 0,
 	TIMESTAMP_FORMAT: '%H' + sep + '%M' + sep + '%S'
 };
 
 
+var util = require('util'),
+	eyes = require('./lib/eyes.js'),
+	ins = eyes.inspector({stream:process.stdout,pretty:true}),
+	logg = require('./lib/logging/lib/logging.js')
+	debugfunc = function(o,showHidden,depth){
+		//ins(o)
+		util.puts(util.inspect(o,showHidden,depth,true));
+	};
+	
 
-
-
-global.print_r = log.print_r;
-global.dump = log.print_r;
+global.print_r = debugfunc;
+global.dump = debugfunc;
 global._prs = log.prs;
 global.var_dump = function(val) {
 	print_r(val, true, 8, null, true);
@@ -40,13 +48,13 @@ process.on('uncaughtException', function(err) {
 	//process.exit(1);
 });
 
-process.once('SIGINT', function catcher() {
+/*process.once('SIGINT', function catcher() {
 	console.error('SIGINT CAUGHT: Are you sure?');
 
 	setTimeout(function() {
 		process.removeAllListeners('SIGINT');
 		process.once('SIGINT', catcher);
-	}, 10000);
+	}, 10000);*/
 
 	process.once('SIGINT', function() {
 		console.error('SIGINT CAUGHT: Closing connections...');
@@ -61,14 +69,17 @@ process.once('SIGINT', function catcher() {
 
 				if (closed == num) {
 					console.error('ALL DONE, BAI');
-					process.kill(process.pid);
+					//process.kill(process.pid);
+					process.exit();
 				}
 			});
 
 			server.quit();
 		});
+
+		process.kill(process.pid, 'SIGINT');
 	});
-});
+//});
 
 
 global.servers = {};
@@ -77,11 +88,12 @@ if (constants.USE_REPL) require('./repl.js');
 
 var irc = require('./irc');
 
-log.important('\nHAI I IN UR SERVER RUNNING UR BOTZ\n');
+//log.important('\nHAI I IN UR SERVER RUNNING UR BOTZ\n');
+log.important('\n *** catbot: the next generation v' + (Math.random()*100).toFixed(4) + '.' + (Math.random()*10).toFixed(0) + '\n')
 
-var path = require('path');
+var fs = require('fs');
 
-if (path.exists(constants.GLOBAL_CONF)) Script.runFileSyncInThisContext(constants.GLOBAL_CONF);
+if (fs.exists(constants.GLOBAL_CONF)) Script.runFileSyncInThisContext(constants.GLOBAL_CONF);
 
 var Script = require('./lib/scripter');
 var cfiles = process.argv.slice(2);
@@ -129,6 +141,49 @@ if (constants.USE_REPL && !repl.context.irc) {
 	repl.context.unwatchModule = function(name) {
 		require('fs').unwatchFile('./modules/' + name + '.js');
 	}
+
+	var fs=require('fs'),
+		dirs=['modules', 'modules/chess'],
+		watched=[],
+		tid;
+
+	repl.context.watchModules = function(id,cb){
+
+		dirs.forEach(function(d){
+			watched.push(fs.watch(d, function(ev,fn){
+				if (ev=='change' && fn!='saved.js') {
+					clearTimeout(tid);
+					tid=setTimeout(function(){
+						servers.hobbes2.reloadModule('chess')
+					}, 100);
+				}
+						
+			}
+		))});
+
+		console.log("watching % dirs: %".f(dirs.length, dirs.join()))
+		return true;
+
+	};
+
+	repl.context.unwatchModules = function(){
+
+		console.log("unwatching % dirs".f(watched.length))
+		watched.forEach(function(w){
+			dump(w); w.close();
+		})
+		watched.length=0;
+
+
+
+	};
+
+
+
+
+
+			
+
 
 	//repl.context.reloadModule = function(name) { call(function(s) { s.reloadModule(name) }) };
 	//repl.context.reloadModule = function(name) { call(function(s) { s.reloadModule(name) }) };

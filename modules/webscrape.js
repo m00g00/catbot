@@ -6,7 +6,7 @@ mod.on('!def', function(msg) { wiktionary(msg); });
 mod.on('!defr', function(msg) { wiktionary(msg, true); });
 mod.on('!wquote', wquote);
 mod.on('!imquote', imquote);
-mod.on('!nigger', niggerquote);
+//mod.on('!nigger', niggerquote);
 mod.on('!w' , wikipedia);
 mod.on('!g', google);
 mod.on('!gcalc', gcalc);
@@ -34,9 +34,10 @@ function gstats(message) {
 function gcalc(message) {
 	scrape('http://www.google.com/search?q=' + escape(message.query.text).replace(/\+/g, '%2B'), function(doc, body, response, xml) {
 		try {
-		var answer = (doc.get("//div[@id='topstuff']//h2/b") || doc.get("//div[@id='ires']//h3/b") || doc.get("//table[@class='obcontainer']//div/table//td"));
+		//var answer = (doc.get("//div[@id='topstuff']//h2[@class='r' and @dir='ltr']") || doc.get("//div[@id='ires']//h3/b") || doc.get("//table[@class='obcontainer']//div/table//td"));
+		var answer = doc.get("//div[@id='topstuff']//h2[@class='r' and @dir='ltr']"); 
 
-		try { answer.get('sup').addPrevSibling(new xml.Element(doc, 'text', {}, '^')) } catch(e) {print_r(e) }
+		/*try { answer.get('sup').addPrevSibling(new xml.Element(doc, 'text', {}, '^')) } catch(e) {print_r(e) }*/
 
 		message.respond(
 			answer.text().replace(/\u00d7/g, 'x')
@@ -131,11 +132,20 @@ function wikipedia(message) {
 function cmdscrape(message) {
 	var query = message.query.text.match(/^\s*(https?:\/\/.*?)\s+--xpath (.*)/);
 
-	console.log('url: ' + query[1] + '\nxpath: ' + query[2]);
+//	console.log('url: ' + query[1] + '\nxpath: ' + query[2]);
 	scrape(query[1], function(doc, body, response) {
+		dump("INHERE");
 		var items = doc.find(query[2]);
 
-		message.respond(items[0].text().trim().replace(/\n|\s+|\t/g, ' ').substr(0, 255));
+		var rands=[],txt='',i,it;
+		for (i=items.length-1;i--;)rands.push(i);
+		rands.sort(function(){return [-1,0,1][~~(Math.random()*3)] });
+		dump(rands);
+
+		while (txt.length < 2 && (it = items[rands.pop()])) txt = it[it.text?'text':'value']().replace(/\s+/g, ' ').trim(); 
+		
+		message.respond(txt.substr(0,255));
+		//message.respond(items.getRandom().text().trim().replace(/\n|\s+|\t/g, ' ').substr(0, 255));
 	});
 }
 

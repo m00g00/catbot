@@ -29,7 +29,7 @@
 
 		g#ranks, g#files {
 			color: #000000;
-			font-size: 55px;
+			font-size: 50px;
 		}
 
 		symbol#black-queen image {
@@ -101,7 +101,7 @@
 	   
 	   
 
-	   <filter id="shad">
+	  <filter id="shad">
 	     <feOffset result="offOut" in="SourceAlpha" dx="0" dy="0"/>
 		 <feComponentTransfer>
 		   <feFuncR type="table" tableValues="1 0"/>
@@ -111,6 +111,15 @@
 		 <feGaussianBlur result = "blurOut" in = "offOut" stdDeviation = "5"/>
          <feBlend in = "SourceGraphic" in2 = "blurOut" mode = "normal"/>
        </filter>
+	   <filter id="dropGlow" width="1.5" height="1.5" x="-.25" y="-.25">
+            <feGaussianBlur id="feGaussianBlur5384" in="SourceAlpha" stdDeviation="15.000000" result="blur"/>
+            <feColorMatrix id="feColorMatrix5386" result="bluralpha" type="matrix" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 0.800000 0 "/>
+            <feOffset id="feOffset5388" in="bluralpha" dx="0.000000" dy="0.000000" result="offsetBlur"/>
+            <feMerge id="feMerge5390">
+                <feMergeNode id="feMergeNode5392" in="offsetBlur"/>
+                <feMergeNode id="feMergeNode5394" in="SourceGraphic"/>
+            </feMerge>
+        </filter> 
 
 	 </defs>
 
@@ -118,23 +127,31 @@
 	 	{{#squares}}
 		<g id="{{id}}" class="square {{color}}" transform="translate({{tx}}, {{ty}})">
 			<rect width="10%" height="10%" />
-			{{#piece}}<use x:href="#{{color}}-{{type}}" />{{/piece}}
+			{{#piece}}<use x:href="#{{color}}-{{type}}" style=""/>{{/piece}}
 		</g>
 		{{/squares}}
+	 </g>
+
+	 <g id="captured-white" transform="translate(910, {{capture_wt}}) scale(.5)">
+	 	{{#capture_w}}<use x:href="#white-{{type}}" transform="translate(0, {{y}})" />{{/capture_w}}
+	 </g>
+
+	 <g id="captured-black" transform="translate(910, {{capture_bt}}) scale(.5)">
+	 	{{#capture_b}}<use x:href="#black-{{type}}" transform="translate(0, {{y}})" />{{/capture_b}}
 	 </g>
 
 	 <g id="ranks" transform="translate(50, 168)">
 	 	{{#ranks}}<text x="0" y="{{y}}">{{rank}}</text>{{/ranks}}
 	 </g>
 
-	 <use x:href="#ranks" transform="translate(873, 0)" />
+	 <!--<use x:href="#ranks" transform="translate(873, 0)" />-->
 
 
-	 <g id="files" transform="translate(140, 80)">
+	 <g id="files" transform="translate(140, 960)">
 	 	{{#files}}<text x="{{x}}" y="0">{{file}}</text>{{/files}}
 	 </g>
 
-	 <use x:href="#files" transform="translate(0, 880)" />
+	 <!--<use x:href="#files" transform="translate(0, 880)" /> -->
 
 </svg>
 
