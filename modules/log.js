@@ -1,5 +1,4 @@
 var log = require('./helper').log, meta = require('./lib/meta');
-
 mod.on('!quote', quote);
 mod.on('!quoteall', quoteall);
 mod.on('!qa', quoteall);
@@ -652,9 +651,10 @@ function loginfo(message) {
 
 
 	//var sql = "SELECT loginfo.rowid, timestamp, type, nick, content FROM loginfo, logtext WHERE loginfo.rowid >= % AND channel = ? AND server = ? AND loginfo.rowid = logtext.docid ORDER BY loginfo.rowid ASC LIMIT ?".f(sid);
-	var sql = "SELECT loginfo.rowid, timestamp, type, nick, content FROM loginfo, logtext WHERE loginfo.rowid >= % AND server = ? AND loginfo.rowid = logtext.docid ORDER BY loginfo.rowid ASC LIMIT ?".f(sid);
+	var sql = ("SELECT loginfo.rowid, timestamp, type, channel, nick, content FROM loginfo, logtext WHERE loginfo.rowid >= % "+(limit>1?"AND server = ? ":"")+"AND loginfo.rowid = logtext.docid ORDER BY loginfo.rowid ASC LIMIT ?").f(sid);
 
-	var params = [/*message.channel, */mod.irc.getServerName(), limit];
+	var params = [limit];
+	if (limit>1) params.unshift(mod.irc.getServerName())
 
 	print_r(sql); print_r(params);
 
@@ -669,9 +669,9 @@ function loginfo(message) {
 function echoLines(lines, message) {
 	var msg = [];
 
-	msg.push(new Date(lines[0].timestamp).format('%Y/%m/%d %H:%M:%S'));
+	msg.push(new Date(lines[0].timestamp).format('%Y/%m/%d'+(lines.length==1?' %H:%M:%S':'')));
 
-	lines.forEach(function(line) {
+	lines.forEach(function(line,i) {
 		var lmsg;
 		switch(line.type) {
 			case 'PRIVMSG':
@@ -694,13 +694,15 @@ function echoLines(lines, message) {
 				break;
 		}
 
-		line.channel = message.channel;
+		//line.channel = message.channel;
 		lmsg = lmsg.fo(line);
 
-		msg.push(lmsg);
+		msg.push((lines.length>1?new Date(line.timestamp).format('%T')+' ':'')+lmsg);
 	});
 
-	if (lines.length == 1) msg[0] += ' ' + msg.pop();
+	console.log(lines[0], message.channel)
+
+	if (lines.length == 1) msg[0] += ' ' + (lines[0].channel != message.channel ? lines[0].channel+' ':'') + msg.pop();
 
 	msg.forEach(function(m) {
 		message.respond(m);
@@ -805,7 +807,8 @@ function markov2 (message) {
 
 var dontspeak = false;
 function talkaboutme(message) {
-	if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message, message.toMe());
+	//if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message, message.toMe());
+	if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick.replace(/0/g,'o'), 'i').test(message.text.replace(/0/g,'o'))) talk(message, message.toMe());
 }
 
 exports.chatPrependNick = false;
@@ -822,8 +825,10 @@ function talk(message, useall) {
 	var text = message.text[0] == '!' ? message.query.text : message.text,
 		cmds = text.split(' ').filter(function(w){ return w[0]=='^' }),
 		seeds = text.split(' ').filter(function(w){return w[0]!='^'}).join(' ').replace(/[^A-Za-z0-9' ]/g, '').split(' ').filter(function(w) { return w.toLowerCase() != mod.irc.state.nick.toLowerCase() }),
-		order = 3,
-		max = 20,
+		maxorder = 5,
+		minorder = 2,
+		fixedorder = null,
+		max = 15,
 		tblquery = function(table) {dump("MOO"); dump(table); return 'SELECT content FROM "' + table + '" WHERE content MATCH $term' };
 
 	seeds.sort(function(a,b) { return b.length - a.length });
@@ -831,10 +836,21 @@ function talk(message, useall) {
 	if (useall) {
 		var usechan;
 		if (useall && cmds.length) {
-			usechan = cmds[0].substr(1);
-			console.log("ASDASD: " + usechan)
+			cmds.forEach(function(cm){
+				var cms=cm.substr(1)
+				dump(cms)
+
+				if (/^\d$/.test(cms)) fixedorder = +cms
+				else usechan = cms
+			})
+					
+			//usechan = cmds[0].substr(1);
+			//console.log("ASDASD: " + usechan)
 			//seeds = seeds.filter(function(s) { return s != usechan.toLowerCase() });
 		}
+    order = getorder()
+
+		if (usechan)
 		getMemTables(function(tables) {
 			var cccc=tables.filter(function(t) {
 				return usechan==undefined ? true : t.match(usechan);
@@ -847,20 +863,24 @@ function talk(message, useall) {
 
 			dump("OKTHEN")
 			dump(cccc);
+
+
 			
 			chain(cccc.map(tblquery).join(' UNION '));
 
 
 		});
+		else chain('SELECT content FROM logtext WHERE content MATCH $term')
 	} else {
+    order = getorder()
 		chain(tblquery(normalizeChan(message.channel)));
 	}
 
     function getorder() {
-        return Math.max(2,~~(Math.random()*4))
+		return fixedorder ||
+			   Math.floor(Math.random()*(maxorder-minorder+1))+minorder
+        //return Math.max(order,~~(Math.random()*4))
     }
-
-    order = getorder()
 
     dump(order)
 
@@ -877,8 +897,9 @@ function talk(message, useall) {
 
 		sentance.push(set);
 
-		if (/*sentance.length >= max || */!sentance.last || set.split(' ').length < order) {
-			message.respond((exports.chatPrependNick ? message.from + ': ' : '') + sentance.join(' '));
+		if (sentance.length >= max || !sentance.last || (set.split(' ').length < order && sentance.length >= max)) {
+			dump(sentance)
+			message.respond((exports.chatPrependNick ? message.from + ': ' : '') + sentance.join(' ').replace(/ ('[^' ]+)(?= |$)/g, '$1').replace(/ , /g, ', ').replace(/ [^ia] /ig, ''))
 		} else {
 			getNext(set, order, arguments.callee);
 		}
@@ -889,7 +910,9 @@ function talk(message, useall) {
 		//console.log(term);
 		db.query(query, { $term: '"' + term + '"' },
 			function(result) {
+				dump("GOT RESULT FOR " + term)
 				var next = [];
+				console.time('stme')
 				result.forEach(function(i) {
 					var after = i.content.substr(
 						i.content.toLowerCase().indexOf(term.toLowerCase()) + term.length
@@ -899,6 +922,7 @@ function talk(message, useall) {
 
 					if (/^[\w\d', ]+$/.test(nset)) next.push(nset);
 				});
+				console.timeEnd('stme')
 
 				callback(next.length ? next.getRandom() : null);
 			}
@@ -997,7 +1021,18 @@ function markov(message) {
 
 }
 	
+mod.on('.linkme', function linkme(msg){
+	db.query('SELECT rowid, content FROM logtext WHERE content MATCH "http://" ORDER BY random() LIMIT 1', function(res) {
 
+	var m = res[0].content.match(/http:\/\/[^\s]+/)
+
+	if (!m){ console.log('try again'); linkme(msg); return }
+
+	msg.respond(res[0].rowid + ' ' + m[0])
+
+	})
+
+})
 
 
 

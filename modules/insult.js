@@ -79,13 +79,13 @@ function insultsearch(msg) {
 
 	
 
-function insultfmt(ins, insulter, insultee) {
+function insultfmt(ins, insulter, insultee, old) {
 	var insult = ins.replace(/\[\]/g, insulter);
 
 	insultee = !insultee || insultee.toLowerCase() == mod.irc.state.nick.toLowerCase() ? insulter : insultee
 
 	if (insult.indexOf('{}') != -1) insult = insult.replace(/\{\}/g, insultee);
-	else insult = insultee + ' ' + insult;
+	else insult = insultee + (old?' is a ':' ') + insult;
 
 	return insult
 }
@@ -140,8 +140,26 @@ function insultadd(message) {
 	});
 }
 		
+var oldinsults, oii
+mod.on('!insultold', function(msg){
+	if (!oldinsults) {
+		require('fs').readFile('modules/Insults.txt', {encoding: 'utf8'}, function(err, data) {
+			if (err) throw err
+			for(var a=data.split('\n'),i=a.length-1,j,tmp; i; i--)
+				j=Math.round(Math.random()*i), tmp=a[j], a[j]=a[i], a[i]=tmp
+
+			oldinsults=a
+			oii=0
+
+			goforit()
+		})
+	} else {
+		goforit()
+	}
+
+	function goforit() { msg.respond(insultfmt(oldinsults[oii++], msg.from, msg.qtxt, true)) }
+})
 	
-		
 	
 	
 

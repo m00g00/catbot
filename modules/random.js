@@ -3,8 +3,8 @@ mod.on('!pi', pi);
 mod.on('!commands', listcommands);
 mod.on('!math', math);
 mod.on('!spell', spell);
-//mod.on(['.js', '..'], js);
-//mod.on(['.jsreset', '.jsr'], force_resetcontext);
+mod.on(['.js'], js);
+mod.on(['.jsreset', '.jsr'], force_resetcontext);
 ['!rock', '!paper', '!scissors'].forEach(function(e) {
 	mod.on(e, rps);
 });
@@ -18,8 +18,8 @@ mod.on('.peen', function(msg) {
 	msg.respond(exports.peen(msg));
 });
 
-//var dice=['⚀','⚁','⚂','⚃','⚄','⚅'];
-//mod.on('.dice', function(msg) { msg.respond(dice.getRandom() + ' ' + dice.getRandom()) })
+var dice=['⚀','⚁','⚂','⚃','⚄','⚅'];
+mod.on('.dice', function(msg) { msg.respond(dice.getRandom() + ' ' + dice.getRandom()) })
 /*mod.on('.kafc', function(msg) {
 	msg.respond(kaffine_compile(msg.query.text).trim());
 });*/

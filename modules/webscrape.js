@@ -135,6 +135,8 @@ function cmdscrape(message) {
 //	console.log('url: ' + query[1] + '\nxpath: ' + query[2]);
 	scrape(query[1], function(doc, body, response) {
 		dump("INHERE");
+
+		require('fs').writeFile('httpdump', body)
 		var items = doc.find(query[2]);
 
 		var rands=[],txt='',i,it;

@@ -114,7 +114,7 @@ var v8 = {
 	}
 };
 
-mod.on(['.js', '..'], v8.call);
+mod.on(['..'], v8.call);
 mod.on('UNLOAD', function() {
 		v8.ctx.each(function(ctx) {
 			ctx.kill('SIGKILL');
@@ -140,6 +140,6 @@ var coco = function(){
           catch(e) { msg.respond(e.message) } } } }()
     
 
-mod.on('.c', coco.run)
-mod.on('.cc', coco.compile)
+//mod.on('.c', coco.run)
+//mod.on('.cc', coco.compile)
 
