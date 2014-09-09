@@ -404,7 +404,7 @@ function makeQuery(p) {
 	var cache = true;
 
 
-	if (queryCache.has(p)){
+	if (!p.nocache && queryCache.has(p)){
 		result = queryCache.get(p);
 		ret.execute = function(callback) {
 			console.log("HAS CACHE");
@@ -502,7 +502,8 @@ function qsn(message) {
 		nick: nick,
 		channel: message.channel,
 		server: mod.irc.state.server,
-		text: text
+		text: text,
+		nocache: true
 	});
 
 	q.execute(function(result) {
@@ -518,7 +519,8 @@ function qs(message) {
 		fields: 'count(*) count',
 		channel: message.toMe() ? message.query.args[0] : message.channel,
 		server: mod.irc.state.server,
-		text: text
+		text: text,
+		nocache: true
 	});
 
 	q.execute(function(result) {
@@ -809,6 +811,17 @@ var dontspeak = false;
 function talkaboutme(message) {
 	//if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick, 'i').test(message.text)) talk(message, message.toMe());
 	if (!dontspeak && message.direction == 'incoming' && !/^[!\.]/.test(message.text) && RegExp(mod.irc.state.nick.replace(/0/g,'o'), 'i').test(message.text.replace(/0/g,'o'))) talk(message, message.toMe());
+	else if (mod.irc.conf.talk_random && message.direction == 'incoming' && !/^[!\.]/.test(message.text)) {
+		var chance = mod.irc.conf.talk_random_chance || .1;
+		var roll = Math.random()
+
+		console.log(" ->ROLL: " + roll);
+
+		if (roll <= chance) {
+			talk(message, message.toMe())
+		}
+	}
+			
 }
 
 exports.chatPrependNick = false;
@@ -821,17 +834,34 @@ mod.on('!stfu', function() {
 	}
 });
 
-function talk(message, useall) {
+exports.talk=talk
+function talk(message, useall, opts) {
 	var text = message.text[0] == '!' ? message.query.text : message.text,
 		cmds = text.split(' ').filter(function(w){ return w[0]=='^' }),
-		seeds = text.split(' ').filter(function(w){return w[0]!='^'}).join(' ').replace(/[^A-Za-z0-9' ]/g, '').split(' ').filter(function(w) { return w.toLowerCase() != mod.irc.state.nick.toLowerCase() }),
-		maxorder = 5,
-		minorder = 2,
-		fixedorder = null,
-		max = 15,
+		seeds = text.split(' ').filter(function(w){return w[0]!='^'})/*.join(' ').replace(/[^A-Za-z0-9'' ]/g, '').split(' ')*/.filter(function(w) { return w.toLowerCase() != mod.irc.state.nick.toLowerCase() }),
+		opts = opts || {},
+		maxorder = opts.maxorder || 2,
+		minorder = opts.minorder || 2,
+		fixedorder = opts.fixedorder || null,
+		max = opts.max || 15,
+		continueorderlt = opts.continueorderlt || true,
+		tryagain = opts.tryagain || false,
+		iwordlen = 4,
 		tblquery = function(table) {dump("MOO"); dump(table); return 'SELECT content FROM "' + table + '" WHERE content MATCH $term' };
 
-	seeds.sort(function(a,b) { return b.length - a.length });
+	//seeds.sort(function(a,b) { return b.length - a.length });
+	var rsort = function(){return Math.random() - .5},
+		slong = seeds.filter(function(r){return r.length>=iwordlen}).sort(rsort)
+		sshort = seeds.filter(function(r){return r.length<iwordlen}).sort(rsort);
+
+	seeds = slong.concat(sshort)
+
+		
+
+	//s2 = seeds.sort(function(a,b){ return a.length<3||b.length<3?-1: Math.random() - Math.random() })
+	dump("SEEDS: "+seeds)
+
+	//if (s2.length) seeds = s2
 
 	if (useall) {
 		var usechan;
@@ -870,11 +900,14 @@ function talk(message, useall) {
 
 
 		});
-		else chain('SELECT content FROM logtext WHERE content MATCH $term')
+		else chain('SELECT content FROM logtext JOIN loginfo ON logtext.docid=loginfo.rowid WHERE server != "freenode" AND content MATCH $term')
 	} else {
     order = getorder()
 		chain(tblquery(normalizeChan(message.channel)));
+
 	}
+
+	max -= order
 
     function getorder() {
 		return fixedorder ||
@@ -882,49 +915,98 @@ function talk(message, useall) {
         //return Math.max(order,~~(Math.random()*4))
     }
 
-    dump(order)
+    dump("ORDER: "+order)
+	dump("MAX: "+max)
 
 
 	function chain(query) {
 		/*console.log(query);
 		console.log(seeds);*/
-		dump(query)
+		//dump(query)
 
 	var sentance = [seeds.shift()];
 
 	getNext(sentance[0], order, function(set) {
-		if (!set) set = seeds.shift();
+		//console.log("SET: "+set)
+		//if (!set) set = seeds.shift();
 
-		sentance.push(set);
+		if (set) sentance.push(set);
+		//console.log(message.text.replace(/susie/i,'').trim().toLowerCase())
+		var joined=sentance.join(' ')
 
-		if (sentance.length >= max || !sentance.last || (set.split(' ').length < order && sentance.length >= max)) {
-			dump(sentance)
-			message.respond((exports.chatPrependNick ? message.from + ': ' : '') + sentance.join(' ').replace(/ ('[^' ]+)(?= |$)/g, '$1').replace(/ , /g, ', ').replace(/ [^ia] /ig, ''))
+		//dump(sentance)
+
+		if ((//!set || 
+			 (sentance.length >= max && sentance.last.substr(-1)=='\0') || 
+			 sentance.length >= 40 || 
+			 !sentance.last || 
+			 sentance.last.substr(-1)=='\0' ||
+			 (!continueorderlt && set.split(' ').length < order)) && 
+			 joined.toLowerCase().replace(/\0/g,'')!=message.text.replace(/susie|\0/ig,'').trim().toLowerCase() &&
+			 joined.toLowerCase().replace(/\0/g,'')!=message.text.toLowerCase().replace(/susie|\0/ig,'')) {
+			message.respond((exports.chatPrependNick ? message.from + ': ' : '') + joined.replace(/ ('[^' ]+)(?= |$)/g, '$1').replace(/ , /g, ', ').replace(/\0/g,'')/*.replace(/ [^ia] /ig, '')*/)
 		} else {
+			if (!set) {
+				var ncn='"'+normalizeChan(message.channel)+'"'
+				var q2='SELECT count(*) c FROM '+ncn
+				var dfunc=arguments.callee
+				db.query(q2,function(res){ 
+					var num=res[0].c,
+						q3 = 'SELECT content FROM '+ncn+' LIMIT '+~~(Math.random()*num)+', 1'
+						//console.log(q3)
+						db.query(q3, function(res){
+							var cnt2=res[0].content,
+								nwrds=cnt2.split(' '),
+								nwrd=nwrds.getRandom()
+							//console.log(cnt2)
+
+							getNext(nwrd, order, dfunc)
+						})
+				})
+			} else {
+							
 			getNext(set, order, arguments.callee);
+			}
 		}
 	});
 
 	function getNext(term, order, callback) {
-		term = term.replace(/["]/g, '');
+		if (!term) term='*'
+		term = term.replace(/["\0!?,]/g, '');
 		//console.log(term);
 		db.query(query, { $term: '"' + term + '"' },
 			function(result) {
-				dump("GOT RESULT FOR " + term)
+				dump("GOT RESULT FOR " + term + ": ") 
 				var next = [];
-				console.time('stme')
+				//console.time('stme')
 				result.forEach(function(i) {
-					var after = i.content.substr(
-						i.content.toLowerCase().indexOf(term.toLowerCase()) + term.length
+				    //if (i.content.match(new RegExp(mod.irc.state.nick,'i'))) { /*console.log(i.content+'!');*/ return }
+				    //console.log(i.content+'?')
+					var ia = i.content.trim() + '\0'
+					var after = ia.substr(
+						ia.toLowerCase().indexOf(term.toLowerCase()) + term.length
 					).trim().split(' ');
+
+					/*console.log("F: "+ia);
+					console.log("A: "+after);
+					console.log();*/
+
+					/*console.log("TERM: " + term)
+					console.log("SENT: " + ia)
+					console.log("AFTER: "+after)*/
 
 					var nset = after.slice(0, order).join(' ');
 
-					if (/^[\w\d', ]+$/.test(nset)) next.push(nset);
-				});
-				console.timeEnd('stme')
+					if (nset=='\0'||nset.trim() == '') nset=null
 
-				callback(next.length ? next.getRandom() : null);
+					if (nset!==null&&/^[\w\d',\0 ]+$/.test(nset)) next.push(nset);
+				});
+				//dump(next.slice(0,20).join('|'))
+				//console.timeEnd('stme')
+
+				if (tryagain && !next.length && order) console.log("TRYAGAIN"),getNext(term.split(' ').slice(1).join(' '),order-1,callback)
+
+				else callback(next.length ? next.getRandom() : null);
 			}
 		);
 	}

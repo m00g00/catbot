@@ -28,6 +28,14 @@ div#reverse {
 div#reverse a { text-decoration: none; color: #000; }
 
 div#info { white-space: pre; }
+div#info span {
+	float: left;
+	background: #ddd;
+	margin: .1em .1em;
+	padding: .1em .2em;
+	border-radius: .2em;
+}
+
 </style>
 
 <script src="/chess.js"></script>
@@ -63,9 +71,15 @@ div#info { white-space: pre; }
 					rev.textContent = rev.textContent == 'w' ? 'b' : 'w';
 					window.location = buildsrc();
 				}, false);*/
+				var hist = game.history({verbose:true}),
+					lastmove = hist[hist.length-1]
+
+				bid(lastmove.from).setAttribute('last-from', 'true')
+				bid(lastmove.to).setAttribute('last-to', 'true')
 
                 inb.addEventListener('mouseover', function(e) {
                     var square = e.target.parentNode;
+					if (!square.id) square = square.parentNode
                     game.movesAt(square.id).forEach(function(m) { 
 
                         var psquare = bid(m.to);
@@ -74,6 +88,7 @@ div#info { white-space: pre; }
                             use.setAttributeNS("http://www.w3.org/1999/xlink", 'href', '#move-placeholder');
                             psquare.appendChild(use);
                             psquare.placeholder = use;
+							psquare.setAttribute("highlight", "true");
 
                             /*var ph = doc.createElementNS("http://www.w3.org/2000/svg", 'circle');
                             psquare.placeholder = ph;
@@ -93,14 +108,27 @@ div#info { white-space: pre; }
                         if (psquare.placeholder) {
                             psquare.removeChild(psquare.placeholder);
                             psquare.placeholder = null;
+							psquare.removeAttribute('highlight')
                         }
                         //psquare.removeAttribute('highlight');
                     });
                 }, false);
 
 
+			info.innerHTML = ''
+			var gpgn = game.pgn(),
+				pgp  = gpgn.split(/ ?\d+\. /)
+
+			pgp.shift()
+			pgp.forEach(function(e,i){
+				var tp = document.createElement('span')
+				tp.textContent = (i+1)+'. '+e
+
+				info.appendChild(tp)
+			})
+
 				
-            info.innerHTML = game.pgn();
+            //info.innerHTML = game.pgn();
 
 
 			var xhr = new XMLHttpRequest() 

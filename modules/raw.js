@@ -608,7 +608,8 @@ function emitLine(line) {
 	}
 
 	if ( ((message.command != "PING" && message.command != "PONG") || global.share.log_pingpong == true) &&
-		 ( ignoredcommands.indexOf(message.command) == -1 ) )
+		 ( ignoredcommands.indexOf(message.command) == -1 ) && 
+		 (!irc.conf.nolog_nondefault_chan || irc.conf.channels.indexOf(message.channel) != -1) )
 		if (share.log_short && /PRIVMSG|QUIT|JOIN|PART/.test(message.command)) 
 			log(cutelog(message));
 			/*log(('{g}{channel}{r} ' + 
@@ -639,6 +640,8 @@ function emitLine(line) {
 		mod.emitAll(caseCmd + ' ' + message.args[0].toLowerCase(), message);
 
 };
+
+exports.emitLine = emitLine;
 
 function onconnect() {
 	irc.state.connect_time = new Date;

@@ -257,6 +257,7 @@ IRC.addPrototype({
 
 		try { this.modules[mod].emit('UNLOAD') }
 		catch(e) { console.log(e.stack) }
+		this.modules[mod]=null
 		return delete this.modules[mod];
 	},
 

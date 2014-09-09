@@ -528,7 +528,8 @@ var log = {
 		if (!force && global.constants.SUPRESS_LOG) return;
 
 		if (global.constants.USE_REPL) {
-			process.stdout.write('\r'+str+'\n');
+			//process.stdout.write('\r'+str+'\n');
+			process.stdout.write('\n'+str);
 			//global.repl.displayPrompt();
 		} else {
 			process.stdout.write(str+'\n');

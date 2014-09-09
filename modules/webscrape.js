@@ -31,6 +31,56 @@ function gstats(message) {
 	});
 }
 
+var fs=require('fs'),
+    lpnf='lastpostnum',
+    getlpostnum=function(){
+	return +fs.readFileSync(lpnf)
+    },
+    setlpostnum=function(n){
+	fs.writeFileSync(lpnf, n)
+    },
+    lreplies=null,
+    lpostnum=getlpostnum(),
+    threadid='thread_143971'
+
+function tk(msg){
+    scrape('http://trollkingdom.net/forum/forumdisplay.php?23-The-Mine-Field', function(doc, body, resp) {
+	try {
+	    var r = doc.get('//tr[@id="'+threadid+'"]/td[starts-with(@class, "stats")]/a').text()
+	    dump('replies: '+r)
+	    if (lreplies === null) lreplies = +r
+
+	    //if (lreplies <= r) throw "No new replies"
+
+	    var lp = doc.get('//tr[@id="'+threadid+'"]/td[starts-with(@class, "vbs_threadlastpost")]/dl/dd/a[starts-with(@class,"lastpostdate")]/@href').value()
+
+	    scrape('http://trollkingdom.net/forum/'+lp,function(doc,body,resp){
+		var lis=doc.find('//ol[@id="posts"]/li')
+
+		var newlpnum=null
+		for (var i=lis.length;i--;){
+		    var li=lis[i]
+
+		    var pnum = li.get('div/div[@class="posthead"]/span[@class="nodecontrols"]/a[starts-with(@id,"postcount")]/@name').value()
+
+		    if (newlpnum===null) newlpnum=pnum
+
+		    if (pnum <= lpostnum) break
+		    dump(li.get('@id').value())
+		    console.log(pnum)
+		}
+
+		setlpostnum(newlpnum)
+		lpostnum=newlpnum
+	    })
+
+	} catch (e) {
+	    console.log('err: '+e)
+	}
+    })
+}
+exports.tk=tk
+
 function gcalc(message) {
 	scrape('http://www.google.com/search?q=' + escape(message.query.text).replace(/\+/g, '%2B'), function(doc, body, response, xml) {
 		try {

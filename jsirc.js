@@ -19,7 +19,7 @@ require('./helper').
 var sep = log.colors.yellow + ':' + log.colors.reset;
 global.share = {
 	process_start_time: new Date,
-	//log_short: true,
+	log_short: true,
 	TIMESTAMP_MODE: 0,
 	TIMESTAMP_FORMAT: '%H' + sep + '%M' + sep + '%S'
 };
@@ -31,7 +31,7 @@ var util = require('util'),
 	logg = require('./lib/logging/lib/logging.js')
 	debugfunc = function(o,showHidden,depth){
 		//ins(o)
-		util.puts(util.inspect(o,showHidden,depth,true));
+		log.put(util.inspect(o,showHidden,depth,true));
 	};
 	
 

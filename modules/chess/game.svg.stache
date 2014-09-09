@@ -20,6 +20,14 @@
 			fill: #8888ff !important;
 		}
 
+		g.square[last-from=true] {
+			fill: #cc6666 !important;
+		}
+
+		g.square[last-to=true] {
+			fill: #ff8888 !important;
+		}
+
 		g.square.white[highlight=true] {
 			fill-opacity: .3;
 		}

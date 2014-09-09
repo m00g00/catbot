@@ -10,6 +10,7 @@ var v8 = {
 	path_history: 'modules/.js/',
 	ctx: {},
 	call: function(msg, code) {
+		console.log("HERE");
         code = code || msg.query.text.trim()
 		if (!code) return;
 

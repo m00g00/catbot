@@ -55,7 +55,7 @@ bool ExecuteString(v8::Handle<v8::String> source,
                    v8::Handle<v8::Value> name,
                    bool print_result,
                    bool report_exceptions);
-v8::Handle<v8::Value> Print(const v8::Arguments& args);
+v8::Handle<v8::Value> Print(const v8::internal::Arguments& args);
 v8::Handle<v8::String> ReadFile(const char* name);
 void ReportException(v8::TryCatch* handler);
 void InspectResult(v8::Handle<v8::Value> result);
@@ -107,16 +107,19 @@ std::string quotestr(std::string &str) {
 
 int main(int argc, char* argv[]) {
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
-  v8::HandleScope handle_scope;
+  v8::Isolate *isolate = v8::Isolate::New();
+  v8::Isolate::Scope isolate_scope(isolate);
+
+  v8::HandleScope handle_scope(isolate);
   v8::Persistent<v8::Context> context = CreateShellContext();
   if (context.IsEmpty()) {
     printf("Error creating context\n");
     return 1;
   }
-  context->Enter();
+  context.Enter();
   
   RunShell(context);
-  context->Exit();
+  context.Exit();
   context.Dispose();
   v8::V8::Dispose();
   return 0;
@@ -133,7 +136,7 @@ v8::Persistent<v8::Context> CreateShellContext() {
 
   //global->SetAccessor(v8::String::New("print"), AccGetPrint);
   // Bind the global 'print' function to the C++ Print callback.
-  global->Set(v8::String::New("print"), v8::FunctionTemplate::New(Print), ReadOnly);
+  global->Set(v8::String::New("print"), v8::FunctionTemplate::New(Print), v8::ReadOnly);
 
 
   return v8::Context::New(NULL, global);
@@ -143,7 +146,7 @@ v8::Persistent<v8::Context> CreateShellContext() {
 // The callback that is invoked by v8 whenever the JavaScript 'print'
 // function is called.  Prints its arguments on stdout separated by
 // spaces and ending with a newline.
-v8::Handle<v8::Value> Print(const v8::Arguments& args) {
+v8::Handle<v8::Value> Print(const v8::internal::Arguments& args) {
   for (int i = 0; i < args.Length(); i++) {
     v8::HandleScope handle_scope;
 

@@ -18,11 +18,17 @@ var games = global.share.chess || (global.share.chess = {}),
     trans = {
         utf8: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔',
                 P: '♟', N: '♞', B: '♝', R: '♜', Q: '♛', K: '♚' }
-    },
+    };
 
+var saved = {}
+
+try {
 	saved = JSON.parse(fs.readFileSync(SAVED_GAMES));
+} catch(e) {
+	console.log('cannot load saved chess games...')
+}
 
-if (!Object.keys(global.share.chess).length) {
+if (saved && !Object.keys(global.share.chess).length) {
 		saved.forEach(function(go,n){
 			//dump(go.setup);
 			//var co = go.setup ? new ch.Chess(go.setup) : new ch.Chess();
@@ -179,7 +185,7 @@ if (HTTP_SERVER) !function() {
 		if (!game){ res.end("No such game"); return }
 
 		({ wait: function(req, res, next) {
-		       game.onturn.push(function() { res.end() }) },
+			   var pid = game.onturn.push(function() { res.end(); game.onturn.splice(pid-1,1) }) },
 
 		   svg: function(req, res, next) {
 			   var body = svg(game, options.orient == 'b');
@@ -506,6 +512,7 @@ function play(game, msg, opts) {
          print: function() { game.print() },
 
 		 delete: function(m) { 
+		 console.log(game.id)
 		 	if (m.query.args[0] == game.id) {
 				off();
 				delete games[game.id];
@@ -514,6 +521,8 @@ function play(game, msg, opts) {
 				savesaved();
 
 				m.respond(game.id + ' removed');
+			} else { 
+				m.respond(game.id)
 			}
 		 },
 

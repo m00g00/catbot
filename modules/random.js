@@ -3,7 +3,7 @@ mod.on('!pi', pi);
 mod.on('!commands', listcommands);
 mod.on('!math', math);
 mod.on('!spell', spell);
-mod.on(['.js'], js);
+mod.on('.js', js);
 mod.on(['.jsreset', '.jsr'], force_resetcontext);
 ['!rock', '!paper', '!scissors'].forEach(function(e) {
 	mod.on(e, rps);
@@ -37,6 +37,14 @@ mod.on('.dice', function(msg) { msg.respond(dice.getRandom() + ' ' + dice.getRan
 
 	js(nmsg);
 });*/
+
+mod.on('!memory', function(msg) {
+	var mem = process.memoryUsage();
+
+	var numeral = require('numeral')
+
+	msg.respond("Resident set size: " + numeral(mem.rss).format('0,0') + " bytes, Heap total: " + numeral(mem.heapTotal).format('0,0') + " bytes, Heap used: " + numeral(mem.heapUsed).format('0,0') + " bytes");
+})
 
 mod.on('!uptime', function(message) {
 	var now = new Date,
