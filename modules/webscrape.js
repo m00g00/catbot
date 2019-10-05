@@ -132,15 +132,15 @@ function goog(query, resp) {
 }
 
 function wikipedia(message) {
-	var base = 'http://en.wikipedia.org';
+	var base = 'https://en.wikipedia.org';
 
 	ifl(message.qtxt, base, function(body, response) {
-		var url = response.headers.location + '?action=render';
+		var url = response.headers.location; // + '?action=render';
 
 		scrape(url, function(doc, body, resp) {
-
-			var par = doc.get('/html/body/p');
-			dump(par);
+			
+			
+			var par = doc.get('/html/body//div[@id="mw-content-text"]/div[@class="mw-parser-output"]/p[not(@class)]');
 
 			par.find('span | sup').forEach(function(e) {
 				e.remove();

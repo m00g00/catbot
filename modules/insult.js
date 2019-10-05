@@ -10,13 +10,19 @@ if (!mod.irc.conf.insult_no_join) mod.on('JOIN', insultjoin);
 
 var db = com.db;
 
-var insults, pointer=0;
+var insults, pointer=0, random_mode = 'newer';
 
-db.query('SELECT * FROM insults ORDER BY insultid', function(res){
-	insults = res
-	share.insults = insults
-	randomize('newer')
-})
+function loadinsults(after) {
+	db.query('SELECT * FROM insults ORDER BY insultid', function(res){
+		insults = res
+		share.insults = insults
+		if (after) after();
+	})
+}
+
+loadinsults(function(){;
+	randomize(random_mode)
+});
 
 function randomize(mode) {
 	insults.sort(mode == 'newest' ? function(a,b){ return Date.parse(b.timestamp) - Date.parse(a.timestamp) } :
@@ -133,6 +139,9 @@ function insultadd(message) {
 				[message.from, message.host, query],
 				function() {
 					message.respond("I has ur insult!");
+					loadinsults(function() {;
+						randomize(random_mode);
+					});
 				}
 			);
 		}
