@@ -32,11 +32,12 @@ var func = {
 		return Object.values(this);
 	},
 
-	bind: function(func, obj) {
+	/*bind: function(func, obj) {
 		return function() {
+			//console.log(func, obj);
 			func.apply(obj, arguments);
 		};
-	}
+	}*/
 		
 };
 

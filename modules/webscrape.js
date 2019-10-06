@@ -34,7 +34,11 @@ function gstats(message) {
 var fs=require('fs'),
     lpnf='lastpostnum',
     getlpostnum=function(){
-	return +fs.readFileSync(lpnf)
+	try {
+		return +fs.readFileSync(lpnf)
+	} catch(e) {
+		return 0;
+	}
     },
     setlpostnum=function(n){
 	fs.writeFileSync(lpnf, n)

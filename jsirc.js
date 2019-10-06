@@ -93,7 +93,7 @@ log.important('\n *** catbot: the next generation v' + (Math.random()*100).toFix
 
 var fs = require('fs');
 
-if (fs.exists(constants.GLOBAL_CONF)) Script.runFileSyncInThisContext(constants.GLOBAL_CONF);
+//if (fs.exists(constants.GLOBAL_CONF)) Script.runFileSyncInThisContext(constants.GLOBAL_CONF);
 
 var Script = require('./lib/scripter');
 var cfiles = process.argv.slice(2);
